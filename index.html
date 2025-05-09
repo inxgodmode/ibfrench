@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IB French B SL Vocabulary Study</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+        .container {
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .filter, .mode-toggle {
+            margin-bottom: 15px;
+        }
+        select, button, input {
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #27ae60;
+        }
+        .mode-toggle button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            margin: 0 5px;
+        }
+        .mode-toggle button:hover {
+            background-color: #2980b9;
+        }
+        .mode-toggle button.active {
+            background-color: #2ecc71;
+        }
+        .flashcard {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            height: 300px;
+            perspective: 1000px;
+            cursor: pointer;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flashcard.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+        .flashcard-front, .flashcard-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            border-radius: 10px;
+        }
+        .flashcard-front {
+            background-color: #3498db;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .flashcard-back {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            font-size: 16px;
+            text-align: left;
+            transform: rotateY(180deg);
+            overflow-y: auto;
+        }
+        .flashcard-back p {
+            margin: 5px 0;
+        }
+        .learn-mode {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .learn-mode p {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .learn-mode input {
+            width: 80%;
+            max-width: 300px;
+            margin-bottom: 10px;
+        }
+        .learn-mode .feedback {
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .learn-mode .feedback.correct {
+            color: #2ecc71;
+        }
+        .learn-mode .feedback.incorrect {
+            color: #e74c3c;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .learn-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        #shuffle-btn {
+            background-color: #e74c3c;
+        }
+        #shuffle-btn:hover {
+            background-color: #c0392b;
+        }
+        #progress {
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        @media (max-width: 500px) {
+            .flashcard, .learn-mode {
+                height: 250px;
+            }
+            .flashcard-front {
+                font-size: 20px;
+            }
+            .flashcard-back, .learn-mode p, .learn-mode .feedback {
+                font-size: 14px;
+            }
+            button, select, input {
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IB French B SL Vocabulary Study</h1>
+        <div class="filter">
+            <select id="theme-filter">
+                <option value="all">All Themes</option>
+                <option value="Identities">Identities</option>
+                <option value="Experiences">Experiences</option>
+                <option value="Human Ingenuity">Human Ingenuity</option>
+                <option value="Social Organization">Social Organization</option>
+                <option value="Sharing the Planet">Sharing the Planet</option>
+            </select>
+        </div>
+        <div class="mode-toggle">
+            <button id="flashcard-mode-btn" class="active">Flashcard Mode</button>
+            <button id="learn-mode-btn">Learn Mode</button>
+        </div>
+        <div id="flashcard" class="flashcard">
+            <div class="flashcard-inner">
+                <div class="flashcard-front"></div>
+                <div class="flashcard-back"></div>
+            </div>
+        </div>
+        <div id="learn-mode" class="learn-mode" style="display: none;">
+            <p id="learn-prompt"></p>
+            <input type="text" id="learn-input" placeholder="Type the French term">
+            <div class="learn-controls">
+                <button id="check-btn">Check Answer</button>
+                <button id="show-btn">Show Answer</button>
+            </div>
+            <p id="learn-feedback" class="feedback"></p>
+        </div>
+        <div class="controls">
+            <button id="prev-btn">Previous</button>
+            <span id="progress">Card 1 of 150</span>
+            <button id="next-btn">Next</button>
+        </div>
+        <button id="shuffle-btn" style="margin-top: 10px;">Shuffle</button>
+    </div>
+
+    <script>
+        const vocabulary = [
+            // Identities (30 terms)
+            { term: "l’identité", translation: "Identity", part: "Noun", example: "Son identité culturelle est un mélange de traditions françaises et algériennes. (Her cultural identity is a blend of French and Algerian traditions.)", synonym: "la personnalité", theme: "Identities" },
+            { term: "s’identifier à", translation: "To identify with", part: "Verb", example: "Elle s’identifie à des personnages courageux dans les livres. (She identifies with brave characters in books.)", synonym: "se reconnaître dans", theme: "Identities" },
+            { term: "la culture", translation: "Culture", part: "Noun", example: "La culture française valorise la gastronomie et l’art. (French culture values gastronomy and art.)", synonym: "le patrimoine", theme: "Identities" },
+            { term: "divers(e)", translation: "Diverse", part: "Adjective", example: "Les étudiants viennent d’horizons divers. (The students come from diverse backgrounds.)", synonym: "varié(e)", theme: "Identities" },
+            { term: "être fier de", translation: "To be proud of", part: "Expression", example: "Il est fier de ses racines québécoises. (He is proud of his Québécois roots.)", synonym: "se vanter de", theme: "Identities" },
+            { term: "la nationalité", translation: "Nationality", part: "Noun", example: "Elle a la double nationalité, française et canadienne. (She has dual nationality, French and Canadian.)", synonym: "la citoyenneté", theme: "Identities" },
+            { term: "exprimer", translation: "To express", part: "Verb", example: "Il exprime ses sentiments à travers la musique. (He expresses his feelings through music.)", synonym: "manifester", theme: "Identities" },
+            { term: "traditionnel(le)", translation: "Traditional", part: "Adjective", example: "Les danses traditionnelles attirent beaucoup de touristes. (Traditional dances attract many tourists.)", synonym: "classique", theme: "Identities" },
+            { term: "les valeurs", translation: "Values", part: "Noun", example: "Les valeurs de liberté et d’égalité sont importantes. (The values of freedom and equality are important.)", synonym: "les principes", theme: "Identities" },
+            { term: "se sentir chez soi", translation: "To feel at home", part: "Expression", example: "À Paris, elle se sent enfin chez elle. (In Paris, she finally feels at home.)", synonym: "être à l’aise", theme: "Identities" },
+            { term: "la personnalité", translation: "Personality", part: "Noun", example: "Sa personnalité dynamique inspire les autres. (Her dynamic personality inspires others.)", synonym: "le caractère", theme: "Identities" },
+            { term: "l’appartenance", translation: "Belonging", part: "Noun", example: "L’appartenance à un groupe renforce l’identité. (Belonging to a group strengthens identity.)", synonym: "l’affiliation", theme: "Identities" },
+            { term: "influencer", translation: "To influence", part: "Verb", example: "Les médias influencent les perceptions culturelles. (The media influence cultural perceptions.)", synonym: "affecter", theme: "Identities" },
+            { term: "unique", translation: "Unique", part: "Adjective", example: "Chaque individu a une histoire unique. (Each individual has a unique story.)", synonym: "particulier(ère)", theme: "Identities" },
+            { term: "la famille", translation: "Family", part: "Noun", example: "La famille joue un rôle clé dans l’identité. (The family plays a key role in identity.)", synonym: "le foyer", theme: "Identities" },
+            { term: "célébrer sa culture", translation: "To celebrate one’s culture", part: "Expression", example: "Ils célèbrent leur culture avec des festivals. (They celebrate their culture with festivals.)", synonym: "honorer sa culture", theme: "Identities" },
+            { term: "moderne", translation: "Modern", part: "Adjective", example: "Les jeunes adoptent un style de vie moderne. (Young people adopt a modern lifestyle.)", synonym: "contemporain(e)", theme: "Identities" },
+            { term: "l’héritage", translation: "Heritage", part: "Noun", example: "L’héritage culturel est précieux pour la communauté. (Cultural heritage is valuable to the community.)", synonym: "le legs", theme: "Identities" },
+            { term: "respecter", translation: "To respect", part: "Verb", example: "Il faut respecter les différences culturelles. (We must respect cultural differences.)", synonym: "honorer", theme: "Identities" },
+            { term: "multiculturel(le)", translation: "Multicultural", part: "Adjective", example: "La ville est un lieu multiculturel vibrant. (The city is a vibrant multicultural place.)", synonym: "pluriculturel(le)", theme: "Identities" },
+            { term: "la langue", translation: "Language", part: "Noun", example: "La langue est un élément central de l’identité. (Language is a central element of identity.)", synonym: "l’idiome", theme: "Identities" },
+            { term: "se découvrir", translation: "To discover oneself", part: "Verb", example: "Voyager aide à se découvrir. (Traveling helps to discover oneself.)", synonym: "s’explorer", theme: "Identities" },
+            { term: "authentique", translation: "Authentic", part: "Adjective", example: "Elle cherche une expérience culturelle authentique. (She seeks an authentic cultural experience.)", synonym: "véritable", theme: "Identities" },
+            { term: "les racines", translation: "Roots", part: "Noun", example: "Il est attaché à ses racines africaines. (He is attached to his African roots.)", synonym: "les origines", theme: "Identities" },
+            { term: "partager son histoire", translation: "To share one’s story", part: "Expression", example: "Elle aime partager son histoire avec les autres. (She loves sharing her story with others.)", synonym: "raconter son parcours", theme: "Identities" },
+            { term: "la diversité", translation: "Diversity", part: "Noun", example: "La diversité enrichit notre société. (Diversity enriches our society.)", synonym: "la variété", theme: "Identities" },
+            { term: "personnel(le)", translation: "Personal", part: "Adjective", example: "Son style est très personnel. (Her style is very personal.)", synonym: "individuel(le)", theme: "Identities" },
+            { term: "la croyance", translation: "Belief", part: "Noun", example: "Les croyances influencent les comportements. (Beliefs influence behaviors.)", synonym: "la conviction", theme: "Identities" },
+            { term: "s’adapter", translation: "To adapt", part: "Verb", example: "Il s’adapte facilement à de nouvelles cultures. (He adapts easily to new cultures.)", synonym: "s’ajuster", theme: "Identities" },
+            { term: "la tolérance", translation: "Tolerance", part: "Noun", example: "La tolérance est essentielle dans une société diverse. (Tolerance is essential in a diverse society.)", synonym: "l’acceptation", theme: "Identities" },
+
+            // Experiences (30 terms)
+            { term: "le voyage", translation: "Travel", part: "Noun", example: "Son voyage en Afrique a changé sa vision du monde. (His trip to Africa changed his worldview.)", synonym: "l’expédition", theme: "Experiences" },
+            { term: "vivre", translation: "To live/experience", part: "Verb", example: "Elle a vécu une aventure incroyable à Bali. (She experienced an incredible adventure in Bali.)", synonym: "expérimenter", theme: "Experiences" },
+            { term: "inoubliable", translation: "Unforgettable", part: "Adjective", example: "Cette soirée était absolument inoubliable. (That evening was absolutely unforgettable.)", synonym: "mémorable", theme: "Experiences" },
+            { term: "le souvenir", translation: "Memory", part: "Noun", example: "Ce collier est un souvenir de mon voyage en France. (This necklace is a memory from my trip to France.)", synonym: "le rappel", theme: "Experiences" },
+            { term: "célébrer", translation: "To celebrate", part: "Verb", example: "Nous célébrons le Nouvel An avec un grand dîner. (We celebrate New Year with a big dinner.)", synonym: "fêter", theme: "Experiences" },
+            { term: "l’aventure", translation: "Adventure", part: "Noun", example: "Partir en randonnée était une vraie aventure. (Going hiking was a real adventure.)", synonym: "l’exploit", theme: "Experiences" },
+            { term: "changer de vie", translation: "To change one’s life", part: "Expression", example: "Elle a décidé de changer de vie après son voyage. (She decided to change her life after her trip.)", synonym: "se réinventer", theme: "Experiences" },
+            { term: "palpitant(e)", translation: "Exciting", part: "Adjective", example: "Son récit de voyage était palpitant. (His travel story was exciting.)", synonym: "passionnant(e)", theme: "Experiences" },
+            { term: "se souvenir de", translation: "To remember", part: "Verb", example: "Je me souviens de mes vacances d’enfance. (I remember my childhood vacations.)", synonym: "se rappeler", theme: "Experiences" },
+            { term: "culturel(le)", translation: "Cultural", part: "Adjective", example: "Les musées offrent une expérience culturelle riche. (Museums offer a rich cultural experience.)", synonym: "artistique", theme: "Experiences" },
+            { term: "l’expérience", translation: "Experience", part: "Noun", example: "Cette expérience a transformé sa vie. (This experience transformed her life.)", synonym: "l’aventure", theme: "Experiences" },
+            { term: "explorer", translation: "To explore", part: "Verb", example: "Ils explorent les marchés locaux en voyage. (They explore local markets while traveling.)", synonym: "découvrir", theme: "Experiences" },
+            { term: "mémorable", translation: "Memorable", part: "Adjective", example: "Le concert était un moment mémorable. (The concert was a memorable moment.)", synonym: "inoubliable", theme: "Experiences" },
+            { term: "la tradition", translation: "Tradition", part: "Noun", example: "La tradition de Noël réunit la famille. (The Christmas tradition brings the family together.)", synonym: "la coutume", theme: "Experiences" },
+            { term: "partager", translation: "To share", part: "Verb", example: "Elle partage ses photos de voyage sur les réseaux sociaux. (She shares her travel photos on social media.)", synonym: "échanger", theme: "Experiences" },
+            { term: "faire ses valises", translation: "To pack one’s bags", part: "Expression", example: "Il faut faire ses valises pour le voyage demain. (We need to pack our bags for the trip tomorrow.)", synonym: "préparer ses affaires", theme: "Experiences" },
+            { term: "spontané(e)", translation: "Spontaneous", part: "Adjective", example: "Leur décision de partir était spontanée. (Their decision to leave was spontaneous.)", synonym: "impulsif(ve)", theme: "Experiences" },
+            { term: "l’événement", translation: "Event", part: "Noun", example: "Le festival est un événement annuel important. (The festival is an important annual event.)", synonym: "la manifestation", theme: "Experiences" },
+            { term: "s’immerger", translation: "To immerse oneself", part: "Verb", example: "Elle s’immerge dans la culture locale en voyage. (She immerses herself in the local culture while traveling.)", synonym: "se plonger", theme: "Experiences" },
+            { term: "enrichissant(e)", translation: "Enriching", part: "Adjective", example: "Rencontrer des gens nouveaux est enrichissant. (Meeting new people is enriching.)", synonym: "formateur(trice)", theme: "Experiences" },
+            { term: "la destination", translation: "Destination", part: "Noun", example: "Paris est une destination populaire pour les touristes. (Paris is a popular destination for tourists.)", synonym: "le lieu", theme: "Experiences" },
+            { term: "découvrir", translation: "To discover", part: "Verb", example: "Ils découvrent des paysages magnifiques. (They discover magnificent landscapes.)", synonym: "explorer", theme: "Experiences" },
+            { term: "festif(ve)", translation: "Festive", part: "Adjective", example: "L’ambiance festive attire beaucoup de monde. (The festive atmosphere attracts many people.)", synonym: "joyeux(euse)", theme: "Experiences" },
+            { term: "le loisir", translation: "Leisure", part: "Noun", example: "Les loisirs occupent son temps libre. (Leisure activities occupy his free time.)", synonym: "le divertissement", theme: "Experiences" },
+            { term: "vivre l’instant", translation: "To live in the moment", part: "Expression", example: "En vacances, il aime vivre l’instant. (On vacation, he likes to live in the moment.)", synonym: "profiter du moment", theme: "Experiences" },
+            { term: "l’émotion", translation: "Emotion", part: "Noun", example: "Ce voyage était plein d’émotions fortes. (This trip was full of strong emotions.)", synonym: "le sentiment", theme: "Experiences" },
+            { term: "inspirant(e)", translation: "Inspiring", part: "Adjective", example: "Son histoire de voyage est inspirante. (His travel story is inspiring.)", synonym: "motivant(e)", theme: "Experiences" },
+            { term: "la rencontre", translation: "Encounter", part: "Noun", example: "Une rencontre inattendue a changé sa vie. (An unexpected encounter changed her life.)", synonym: "le contact", theme: "Experiences" },
+            { term: "apprendre", translation: "To learn", part: "Verb", example: "Voyager permet d’apprendre de nouvelles choses. (Traveling allows you to learn new things.)", synonym: "découvrir", theme: "Experiences" },
+            { term: "l’itinéraire", translation: "Itinerary", part: "Noun", example: "Ils planifient leur itinéraire avec soin. (They plan their itinerary carefully.)", synonym: "le trajet", theme: "Experiences" },
+
+            // Human Ingenuity (30 terms)
+            { term: "l’innovation", translation: "Innovation", part: "Noun", example: "L’innovation technologique transforme nos vies. (Technological innovation is transforming our lives.)", synonym: "la nouveauté", theme: "Human Ingenuity" },
+            { term: "inventer", translation: "To invent", part: "Verb", example: "Elle a inventé une application pour apprendre le français. (She invented an app to learn French.)", synonym: "créer", theme: "Human Ingenuity" },
+            { term: "révolutionnaire", translation: "Revolutionary", part: "Adjective", example: "Cette découverte est révolutionnaire pour la médecine. (This discovery is revolutionary for medicine.)", synonym: "novateur(trice)", theme: "Human Ingenuity" },
+            { term: "la technologie", translation: "Technology", part: "Noun", example: "La technologie facilite la communication mondiale. (Technology facilitates global communication.)", synonym: "la technique", theme: "Human Ingenuity" },
+            { term: "repousser les limites", translation: "To push boundaries", part: "Expression", example: "Les scientifiques repoussent les limites de l’intelligence artificielle. (Scientists are pushing the boundaries of artificial intelligence.)", synonym: "dépasser les bornes", theme: "Human Ingenuity" },
+            { term: "le progrès", translation: "Progress", part: "Noun", example: "Le progrès scientifique améliore la qualité de vie. (Scientific progress improves quality of life.)", synonym: "l’avancement", theme: "Human Ingenuity" },
+            { term: "créatif(ve)", translation: "Creative", part: "Adjective", example: "Son approche créative a surpris tout le monde. (Her creative approach surprised everyone.)", synonym: "imaginatif(ve)", theme: "Human Ingenuity" },
+            { term: "développer", translation: "To develop", part: "Verb", example: "Ils développent un nouveau logiciel écologique. (They are developing new eco-friendly software.)", synonym: "élaborer", theme: "Human Ingenuity" },
+            { term: "la science", translation: "Science", part: "Noun", example: "La science joue un rôle clé dans la lutte contre le changement climatique. (Science plays a key role in fighting climate change.)", synonym: "la recherche", theme: "Human Ingenuity" },
+            { term: "collaborer", translation: "To collaborate", part: "Verb", example: "Les entreprises collaborent pour innover. (Companies collaborate to innovate.)", synonym: "travailler ensemble", theme: "Human Ingenuity" },
+            { term: "l’invention", translation: "Invention", part: "Noun", example: "L’invention de l’imprimerie a changé le monde. (The invention of the printing press changed the world.)", synonym: "la création", theme: "Human Ingenuity" },
+            { term: "améliorer", translation: "To improve", part: "Verb", example: "Ils cherchent à améliorer les énergies renouvelables. (They aim to improve renewable energies.)", synonym: "optimiser", theme: "Human Ingenuity" },
+            { term: "novateur(trice)", translation: "Innovative", part: "Adjective", example: "Cette entreprise est connue pour ses produits novateurs. (This company is known for its innovative products.)", synonym: "original(e)", theme: "Human Ingenuity" },
+            { term: "la créativité", translation: "Creativity", part: "Noun", example: "La créativité est essentielle dans le design. (Creativity is essential in design.)", synonym: "l’imagination", theme: "Human Ingenuity" },
+            { term: "transformer", translation: "To transform", part: "Verb", example: "La technologie transforme notre façon de travailler. (Technology is transforming the way we work.)", synonym: "modifier", theme: "Human Ingenuity" },
+            { term: "changer le monde", translation: "To change the world", part: "Expression", example: "Son invention pourrait changer le monde. (His invention could change the world.)", synonym: "révolutionner", theme: "Human Ingenuity" },
+            { term: "technologique", translation: "Technological", part: "Adjective", example: "Les avancées technologiques sont rapides. (Technological advances are rapid.)", synonym: "technique", theme: "Human Ingenuity" },
+            { term: "la recherche", translation: "Research", part: "Noun", example: "La recherche médicale sauve des vies. (Medical research saves lives.)", synonym: "l’étude", theme: "Human Ingenuity" },
+            { term: "expérimenter", translation: "To experiment", part: "Verb", example: "Les scientifiques expérimentent de nouvelles solutions. (Scientists experiment with new solutions.)", synonym: "tester", theme: "Human Ingenuity" },
+            { term: "efficace", translation: "Efficient", part: "Adjective", example: "Ce système est plus efficace que l’ancien. (This system is more efficient than the old one.)", synonym: "performant(e)", theme: "Human Ingenuity" },
+            { term: "le design", translation: "Design", part: "Noun", example: "Le design moderne attire les consommateurs. (Modern design attracts consumers.)", synonym: "la conception", theme: "Human Ingenuity" },
+            { term: "résoudre", translation: "To solve", part: "Verb", example: "Ils essaient de résoudre les problèmes techniques. (They are trying to solve technical problems.)", synonym: "régler", theme: "Human Ingenuity" },
+            { term: "futuriste", translation: "Futuristic", part: "Adjective", example: "Ce concept de voiture est futuriste. (This car concept is futuristic.)", synonym: "avant-gardiste", theme: "Human Ingenuity" },
+            { term: "l’intelligence artificielle", translation: "Artificial intelligence", part: "Noun", example: "L’intelligence artificielle révolutionne l’industrie. (Artificial intelligence is revolutionizing the industry.)", synonym: "l’IA", theme: "Human Ingenuity" },
+            { term: "pionnier(ère)", translation: "Pioneer", part: "Noun/Adjective", example: "Elle est une pionnière dans la robotique. (She is a pioneer in robotics.)", synonym: "innovateur(trice)", theme: "Human Ingenuity" },
+            { term: "l’idée", translation: "Idea", part: "Noun", example: "Son idée a inspiré une nouvelle invention. (Her idea inspired a new invention.)", synonym: "le concept", theme: "Human Ingenuity" },
+            { term: "concevoir", translation: "To design", part: "Verb", example: "Ils conçoivent des produits écologiques. (They design eco-friendly products.)", synonym: "créer", theme: "Human Ingenuity" },
+            { term: "pratique", translation: "Practical", part: "Adjective", example: "Cette application est très pratique pour apprendre. (This app is very practical for learning.)", synonym: "utile", theme: "Human Ingenuity" },
+            { term: "la découverte", translation: "Discovery", part: "Noun", example: "La découverte d’une nouvelle planète excite les scientifiques. (The discovery of a new planet excites scientists.)", synonym: "l’invention", theme: "Human Ingenuity" },
+            { term: "automatiser", translation: "To automate", part: "Verb", example: "L’usine a automatisé ses processus. (The factory automated its processes.)", synonym: "mécaniser", theme: "Human Ingenuity" },
+
+            // Social Organization (30 terms)
+            { term: "la communauté", translation: "Community", part: "Noun", example: "La communauté organise un festival chaque année. (The community organizes a festival every year.)", synonym: "le groupe", theme: "Social Organization" },
+            { term: "participer", translation: "To participate", part: "Verb", example: "Tout le monde peut participer au projet de bénévolat. (Everyone can participate in the volunteering project.)", synonym: "s’impliquer", theme: "Social Organization" },
+            { term: "éducatif(ve)", translation: "Educational", part: "Adjective", example: "Ce programme éducatif aide les jeunes à réussir. (This educational program helps young people succeed.)", synonym: "instructif(ve)", theme: "Social Organization" },
+            { term: "le travail", translation: "Work", part: "Noun", example: "Le travail d’équipe est essentiel dans ce projet. (Teamwork is essential in this project.)", synonym: "l’emploi", theme: "Social Organization" },
+            { term: "s’engager dans", translation: "To get involved in", part: "Expression", example: "Elle s’engage dans des causes sociales. (She gets involved in social causes.)", synonym: "se consacrer à", theme: "Social Organization" },
+            { term: "l’égalité", translation: "Equality", part: "Noun", example: "L’égalité des genres est un objectif mondial. (Gender equality is a global goal.)", synonym: "l’équité", theme: "Social Organization" },
+            { term: "organiser", translation: "To organize", part: "Verb", example: "Ils organisent une collecte de fonds pour l’école. (They are organizing a fundraiser for the school.)", synonym: "planifier", theme: "Social Organization" },
+            { term: "social(e)", translation: "Social", part: "Adjective", example: "Les réseaux sociaux influencent la société. (Social networks influence society.)", synonym: "communautaire", theme: "Social Organization" },
+            { term: "le bénévolat", translation: "Volunteering", part: "Noun", example: "Le bénévolat aide à renforcer la communauté. (Volunteering helps strengthen the community.)", synonym: "l’entraide", theme: "Social Organization" },
+            { term: "promouvoir", translation: "To promote", part: "Verb", example: "L’école promeut des valeurs d’inclusion. (The school promotes values of inclusion.)", synonym: "encourager", theme: "Social Organization" },
+            { term: "la société", translation: "Society", part: "Noun", example: "La société évolue grâce à l’éducation. (Society evolves thanks to education.)", synonym: "la communauté", theme: "Social Organization" },
+            { term: "éduquer", translation: "To educate", part: "Verb", example: "Il est important d’éduquer les jeunes sur l’égalité. (It is important to educate young people about equality.)", synonym: "former", theme: "Social Organization" },
+            { term: "inclusif(ve)", translation: "Inclusive", part: "Adjective", example: "Cette école adopte une approche inclusive. (This school adopts an inclusive approach.)", synonym: "accueillant(e)", theme: "Social Organization" },
+            { term: "l’éducation", translation: "Education", part: "Noun", example: "L’éducation est la clé du développement. (Education is the key to development.)", synonym: "l’enseignement", theme: "Social Organization" },
+            { term: "contribuer à", translation: "To contribute to", part: "Expression", example: "Elle contribue à des projets communautaires. (She contributes to community projects.)", synonym: "participer à", theme: "Social Organization" },
+            { term: "professionnel(le)", translation: "Professional", part: "Adjective", example: "Il a une attitude professionnelle au travail. (He has a professional attitude at work.)", synonym: "sérieux(euse)", theme: "Social Organization" },
+            { term: "la solidarité", translation: "Solidarity", part: "Noun", example: "La solidarité unit les membres de la communauté. (Solidarity unites community members.)", synonym: "l’entraide", theme: "Social Organization" },
+            { term: "collaborer", translation: "To collaborate", part: "Verb", example: "Les équipes collaborent sur un projet commun. (The teams collaborate on a common project.)", synonym: "travailler ensemble", theme: "Social Organization" },
+            { term: "égalitaire", translation: "Egalitarian", part: "Adjective", example: "Une société égalitaire profite à tous. (An egalitarian society benefits everyone.)", synonym: "équitable", theme: "Social Organization" },
+            { term: "l’organisation", translation: "Organization", part: "Noun", example: "L’organisation d’événements demande du temps. (Organizing events requires time.)", synonym: "la planification", theme: "Social Organization" },
+            { term: "le leadership", translation: "Leadership", part: "Noun", example: "Son leadership inspire les autres. (His leadership inspires others.)", synonym: "la direction", theme: "Social Organization" },
+            { term: "motiver", translation: "To motivate", part: "Verb", example: "Elle motive ses collègues à s’impliquer. (She motivates her colleagues to get involved.)", synonym: "encourager", theme: "Social Organization" },
+            { term: "collectif(ve)", translation: "Collective", part: "Adjective", example: "Un effort collectif est nécessaire pour réussir. (A collective effort is necessary to succeed.)", synonym: "commun(e)", theme: "Social Organization" },
+            { term: "la responsabilité", translation: "Responsibility", part: "Noun", example: "Chacun a une responsabilité envers la société. (Everyone has a responsibility toward society.)", synonym: "le devoir", theme: "Social Organization" },
+            { term: "travailler en équipe", translation: "To work as a team", part: "Expression", example: "Travailler en équipe améliore les résultats. (Working as a team improves results.)", synonym: "collaborer", theme: "Social Organization" },
+            { term: "l’emploi", translation: "Employment", part: "Noun", example: "L’emploi stable est une priorité pour beaucoup. (Stable employment is a priority for many.)", synonym: "le travail", theme: "Social Organization" },
+            { term: "dynamique", translation: "Dynamic", part: "Adjective", example: "L’équipe dynamique a atteint ses objectifs. (The dynamic team achieved its goals.)", synonym: "énergique", theme: "Social Organization" },
+            { term: "le projet", translation: "Project", part: "Noun", example: "Le projet communautaire a uni les habitants. (The community project united the residents.)", synonym: "l’initiative", theme: "Social Organization" },
+            { term: "soutenir", translation: "To support", part: "Verb", example: "Ils soutiennent les initiatives locales. (They support local initiatives.)", synonym: "appuyer", theme: "Social Organization" },
+            { term: "la coopération", translation: "Cooperation", part: "Noun", example: "La coopération entre écoles favorise l’apprentissage. (Cooperation between schools promotes learning.)", synonym: "la collaboration", theme: "Social Organization" },
+
+            // Sharing the Planet (30 terms)
+            { term: "l’environnement", translation: "Environment", part: "Noun", example: "Protéger l’environnement est une priorité mondiale. (Protecting the environment is a global priority.)", synonym: "la nature", theme: "Sharing the Planet" },
+            { term: "protéger", translation: "To protect", part: "Verb", example: "Nous devons protéger les espèces en danger. (We must protect endangered species.)", synonym: "préserver", theme: "Sharing the Planet" },
+            { term: "durable", translation: "Sustainable", part: "Adjective", example: "Les énergies durables réduisent la pollution. (Sustainable energies reduce pollution.)", synonym: "écologique", theme: "Sharing the Planet" },
+            { term: "le changement climatique", translation: "Climate change", part: "Noun", example: "Le changement climatique affecte les océans. (Climate change affects the oceans.)", synonym: "le réchauffement climatique", theme: "Sharing the Planet" },
+            { term: "prendre soin de", translation: "To take care of", part: "Expression", example: "Il faut prendre soin de la planète pour les générations futures. (We must take care of the planet for future generations.)", synonym: "veiller sur", theme: "Sharing the Planet" },
+            { term: "la pollution", translation: "Pollution", part: "Noun", example: "La pollution de l’air est un problème grave. (Air pollution is a serious problem.)", synonym: "la contamination", theme: "Sharing the Planet" },
+            { term: "recycler", translation: "To recycle", part: "Verb", example: "Recycler les déchets aide à préserver les ressources. (Recycling waste helps preserve resources.)", synonym: "réutiliser", theme: "Sharing the Planet" },
+            { term: "mondial(e)", translation: "Global", part: "Adjective", example: "Les problèmes mondiaux nécessitent des solutions collectives. (Global problems require collective solutions.)", synonym: "international(e)", theme: "Sharing the Planet" },
+            { term: "sensibiliser", translation: "To raise awareness", part: "Verb", example: "Cette campagne sensibilise le public à l’écologie. (This campaign raises public awareness about ecology.)", synonym: "informer", theme: "Sharing the Planet" },
+            { term: "les ressources", translation: "Resources", part: "Noun", example: "Les ressources naturelles s’épuisent rapidement. (Natural resources are depleting rapidly.)", synonym: "les matières", theme: "Sharing the Planet" },
+            { term: "la durabilité", translation: "Sustainability", part: "Noun", example: "La durabilité est essentielle pour l’avenir. (Sustainability is essential for the future.)", synonym: "la pérennité", theme: "Sharing the Planet" },
+            { term: "réduire", translation: "To reduce", part: "Verb", example: "Nous devons réduire notre consommation d’énergie. (We must reduce our energy consumption.)", synonym: "diminuer", theme: "Sharing the Planet" },
+            { term: "écologique", translation: "Ecological", part: "Adjective", example: "Les produits écologiques sont populaires. (Ecological products are popular.)", synonym: "vert(e)", theme: "Sharing the Planet" },
+            { term: "la biodiversité", translation: "Biodiversity", part: "Noun", example: "La biodiversité est menacée par la déforestation. (Biodiversity is threatened by deforestation.)", synonym: "la diversité biologique", theme: "Sharing the Planet" },
+            { term: "agir pour", translation: "To act for", part: "Expression", example: "Les jeunes agissent pour l’environnement. (Young people act for the environment.)", synonym: "s’engager pour", theme: "Sharing the Planet" },
+            { term: "responsable", translation: "Responsible", part: "Adjective", example: "Adopter un mode de vie responsable aide la planète. (Adopting a responsible lifestyle helps the planet.)", synonym: "conscient(e)", theme: "Sharing the Planet" },
+            { term: "la conservation", translation: "Conservation", part: "Noun", example: "La conservation des forêts est cruciale. (Forest conservation is crucial.)", synonym: "la préservation", theme: "Sharing the Planet" },
+            { term: "préserver", translation: "To preserve", part: "Verb", example: "Il faut préserver les habitats naturels. (We must preserve natural habitats.)", synonym: "protéger", theme: "Sharing the Planet" },
+            { term: "écoresponsable", translation: "Eco-friendly", part: "Adjective", example: "Cette marque propose des produits écoresponsables. (This brand offers eco-friendly products.)", synonym: "écologique", theme: "Sharing the Planet" },
+            { term: "l’énergie renouvelable", translation: "Renewable energy", part: "Noun", example: "L’énergie renouvelable réduit les émissions. (Renewable energy reduces emissions.)", synonym: "l’énergie verte", theme: "Sharing the Planet" },
+            { term: "l’empreinte carbone", translation: "Carbon footprint", part: "Noun", example: "Réduire son empreinte carbone est urgent. (Reducing one’s carbon footprint is urgent.)", synonym: "l’impact carbone", theme: "Sharing the Planet" },
+            { term: "économiser", translation: "To save", part: "Verb", example: "Économiser l’eau est une priorité. (Saving water is a priority.)", synonym: "conserver", theme: "Sharing the Planet" },
+            { term: "global(e)", translation: "Global", part: "Adjective", example: "Les défis globaux exigent une action commune. (Global challenges require collective action.)", synonym: "mondial(e)", theme: "Sharing the Planet" },
+            { term: "la déforestation", translation: "Deforestation", part: "Noun", example: "La déforestation détruit les écosystèmes. (Deforestation destroys ecosystems.)", synonym: "la coupe d’arbres", theme: "Sharing the Planet" },
+            { term: "agir ensemble", translation: "To act together", part: "Expression", example: "Nous devons agir ensemble pour sauver la planète. (We must act together to save the planet.)", synonym: "collaborer", theme: "Sharing the Planet" },
+            { term: "l’écosystème", translation: "Ecosystem", part: "Noun", example: "Les écosystèmes marins sont en danger. (Marine ecosystems are in danger.)", synonym: "l’environnement", theme: "Sharing the Planet" },
+            { term: "conscient(e)", translation: "Aware", part: "Adjective", example: "Il est conscient des problèmes environnementaux. (He is aware of environmental issues.)", synonym: "informé(e)", theme: "Sharing the Planet" },
+            { term: "le recyclage", translation: "Recycling", part: "Noun", example: "Le recyclage réduit les déchets. (Recycling reduces waste.)", synonym: "la réutilisation", theme: "Sharing the Planet" },
+            { term: "lutter contre", translation: "To fight against", part: "Verb", example: "Ils luttent contre la pollution plastique. (They fight against plastic pollution.)", synonym: "combattre", theme: "Sharing the Planet" },
+            { term: "la faune", translation: "Wildlife", part: "Noun", example: "La faune est menacée par le braconnage. (Wildlife is threatened by poaching.)", synonym: "les animaux sauvages", theme: "Sharing the Planet" }
+        ];
+
+        let currentIndex = 0;
+        let cards = [...vocabulary];
+        let currentTheme = "all";
+        let currentMode = "flashcard";
+
+        const flashcard = document.getElementById('flashcard');
+        const flashcardInner = flashcard.querySelector('.flashcard-inner');
+        const front = flashcard.querySelector('.flashcard-front');
+        const back = flashcard.querySelector('.flashcard-back');
+        const learnMode = document.getElementById('learn-mode');
+        const learnPrompt = document.getElementById('learn-prompt');
+        const learnInput = document.getElementById('learn-input');
+        const learnFeedback = document.getElementById('learn-feedback');
+        const checkBtn = document.getElementById('check-btn');
+        const showBtn = document.getElementById('show-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const progress = document.getElementById('progress');
+        const themeFilter = document.getElementById('theme-filter');
+        const flashcardModeBtn = document.getElementById('flashcard-mode-btn');
+        const learnModeBtn = document.getElementById('learn-mode-btn');
+
+        function updateCard() {
+            if (cards.length === 0) {
+                if (currentMode === "flashcard") {
+                    front.textContent = "No cards available";
+                    back.innerHTML = "<p>Please select a theme.</p>";
+                } else {
+                    learnPrompt.textContent = "No questions available";
+                    learnFeedback.textContent = "Please select a theme.";
+                }
+                progress.textContent = "Card 0 of 0";
+                return;
+            }
+            const card = cards[currentIndex];
+            if (currentMode === "flashcard") {
+                front.textContent = card.term;
+                back.innerHTML = `
+                    <p><strong>Theme:</strong> ${card.theme}</p>
+                    <p><strong>Translation:</strong> ${card.translation}</p>
+                    <p><strong>Part of Speech:</strong> ${card.part}</p>
+                    <p><strong>Example:</strong> ${card.example}</p>
+                    <p><strong>Synonym:</strong> ${card.synonym}</p>
+                `;
+                progress.textContent = `Card ${currentIndex + 1} of ${cards.length}`;
+                flashcard.classList.remove('flipped');
+            } else {
+                learnPrompt.textContent = `What is the French term for "${card.translation}"?`;
+                learnInput.value = "";
+                learnFeedback.textContent = "";
+                progress.textContent = `Question ${currentIndex + 1} of ${cards.length}`;
+            }
+        }
+
+        function filterCards(theme) {
+            currentTheme = theme;
+            if (theme === "all") {
+                cards = [...vocabulary];
+            } else {
+                cards = vocabulary.filter(card => card.theme === theme);
+            }
+            currentIndex = 0;
+            updateCard();
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function toggleMode(mode) {
+            currentMode = mode;
+            flashcard.style.display = mode === "flashcard" ? "block" : "none";
+            learnMode.style.display = mode === "learn" ? "block" : "none";
+            flashcardModeBtn.classList.toggle('active', mode === "flashcard");
+            learnModeBtn.classList.toggle('active', mode === "learn");
+            updateCard();
+        }
+
+        flashcard.addEventListener('click', () => {
+            if (currentMode === "flashcard") {
+                flashcard.classList.toggle('flipped');
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (cards.length === 0) return;
+            currentIndex = (currentIndex - 1 + cards.length) % cards.length;
+            updateCard();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (cards.length === 0) return;
+            currentIndex = (currentIndex + 1) % cards.length;
+            updateCard();
+        });
+
+        shuffleBtn.addEventListener('click', () => {
+            cards = shuffleArray([...cards]);
+            currentIndex = 0;
+            updateCard();
+        });
+
+        themeFilter.addEventListener('change', (e) => {
+            filterCards(e.target.value);
+        });
+
+        flashcardModeBtn.addEventListener('click', () => toggleMode("flashcard"));
+        learnModeBtn.addEventListener('click', () => toggleMode("learn"));
+
+        checkBtn.addEventListener('click', () => {
+            if (cards.length === 0) return;
+            const card = cards[currentIndex];
+            const userAnswer = learnInput.value.trim().toLowerCase();
+            const correctAnswer = card.term.toLowerCase();
+            if (userAnswer === correctAnswer) {
+                learnFeedback.textContent = "Correct!";
+                learnFeedback.classList.add('correct');
+                learnFeedback.classList.remove('incorrect');
+            } else {
+                learnFeedback.textContent = `Incorrect, try again.`;
+                learnFeedback.classList.add('incorrect');
+                learnFeedback.classList.remove('correct');
+            }
+        });
+
+        showBtn.addEventListener('click', () => {
+            if (cards.length === 0) return;
+            const card = cards[currentIndex];
+            learnFeedback.textContent = `The correct term is "${card.term}".`;
+            learnFeedback.classList.remove('correct', 'incorrect');
+        });
+
+        learnInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkBtn.click();
+            }
+        });
+
+        // Initialize the first card
+        updateCard();
+    </script>
+</body>
+</html>
