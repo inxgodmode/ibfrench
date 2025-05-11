@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identités Vocabulary Flashcards & Quiz</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #7dd3fc, #3b82f6);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Inter', sans-serif;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        .flashcard {
+            width: 500px;
+            height: 300px;
+            perspective: 1000px;
+            position: relative;
+            cursor: pointer;
+            margin: 0 auto;
+        }
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+        .flashcard.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+        .flashcard-front, .flashcard-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: 500;
+            text-align: center;
+            color: #1f2937;
+        }
+        .flashcard-front {
+            background: #ffffff;
+        }
+        .flashcard-back {
+            background: #f3f4f6;
+            transform: rotateY(180deg);
+        }
+        .quiz-container {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .quiz-question {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        .quiz-option {
+            padding: 10px;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .quiz-option:hover {
+            background: #f3f4f6;
+        }
+        .quiz-option.correct {
+            background: #10b981;
+            color: #ffffff;
+        }
+        .quiz-option.incorrect {
+            background: #ef4444;
+            color: #ffffff;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #d1d5db;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress {
+            height: 100%;
+            background: #3b82f6;
+            width: 0;
+            transition: width 0.3s;
+        }
+        .control-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .mode-toggle {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .category-select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #3b82f6;
+            color: #ffffff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .mode-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #e5e7eb;
+            color: #1f2937;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            min-width: 120px;
+        }
+        .mode-btn:hover {
+            background: #d1d5db;
+        }
+        .mode-btn.active {
+            background: #3b82f6;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        .score {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 640px) {
+            .flashcard {
+                width: 100%;
+                height: 200px;
+                font-size: 1.2rem;
+            }
+            .container {
+                padding: 20px;
+            }
+            .control-panel, .mode-toggle {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .category-select, button, .mode-btn {
+                width: 100%;
+                font-size: 1rem;
+            }
+            .quiz-question {
+                font-size: 1.2rem;
+            }
+            .mode-btn {
+                padding: 10px;
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Identités Vocabulary Flashcards & Quiz</h1>
+        <div class="mode-toggle">
+            <button class="mode-btn active" onclick="switchMode('learn')">Learn Mode</button>
+            <button class="mode-btn" onclick="switchMode('quiz')">Quiz Mode</button>
+        </div>
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+        <div class="learn-container" id="learn-container">
+            <div class="flashcard" id="flashcard" onclick="flipCard()">
+                <div class="flashcard-inner">
+                    <div class="flashcard-front" id="front"></div>
+                    <div class="flashcard-back" id="back"></div>
+                </div>
+            </div>
+        </div>
+        <div class="quiz-container" id="quiz-container">
+            <div class="score" id="score">Score: 0/0</div>
+            <div class="quiz-question" id="quiz-question"></div>
+            <div id="quiz-options"></div>
+        </div>
+        <div class="control-panel">
+            <select id="category" class="category-select" onchange="changeCategory()">
+                <option value="all">All Categories</option>
+                <option value="styles">Styles de vie</option>
+                <option value="sante">Santé et bien-être</option>
+                <option value="convictions">Convictions et valeurs</option>
+                <option value="souscultures">Sous-cultures</option>
+                <option value="langue">Langue et identité</option>
+                <option value="francophonie">L'identité culturelle: la francophonie</option>
+            </select>
+            <button onclick="prevCard()" id="prev-btn">Previous</button>
+            <button onclick="nextCard()" id="next-btn">Next</button>
+        </div>
+    </div>
+    <script>
+        const flashcards = [
+            // Styles de vie
+            { category: "styles", front: "Le mode de vie", back: "Lifestyle/way of life" },
+            { category: "styles", front: "Avoir un mode de vie sain et équilibré", back: "To have a healthy and balanced lifestyle" },
+            { category: "styles", front: "Flemmarder devant la télé (fam)", back: "To laze about in front of the TV/to be a couch potato" },
+            { category: "styles", front: "Je mène une vie active et j'aime les activités de plein air.", back: "I lead an active life and I like outdoor activities." },
+            // Santé et bien-être
+            { category: "sante", front: "En bonne/mauvaise santé", back: "In good/poor health" },
+            { category: "sante", front: "Une maladie chronique", back: "Chronic illness/disease" },
+            { category: "sante", front: "Le médicament générique", back: "Generic drug" },
+            { category: "sante", front: "La malbouffe", back: "Junk food" },
+            { category: "sante", front: "Une activité physique quotidienne", back: "Daily physical activity" },
+            { category: "sante", front: "Le sida/le VIH", back: "AIDS/HIV" },
+            // Convictions et valeurs
+            { category: "convictions", front: "L'honnêteté", back: "Honesty" },
+            { category: "convictions", front: "La liberté d'expression", back: "Freedom of speech" },
+            { category: "convictions", front: "Je suis contre toute idée préconçue ou généralisation.", back: "I am against all preconceptions or generalisations." },
+            { category: "convictions", front: "L'église/la mosquée", back: "Church/mosque" },
+            // Sous-cultures
+            { category: "souscultures", front: "Le look", back: "Look, image" },
+            { category: "souscultures", front: "Le sentiment d'appartenance", back: "Sense of belonging" },
+            { category: "souscultures", front: "Les tatouages sont des façons de s'exprimer.", back: "Tattoos are a way to express yourself." },
+            { category: "souscultures", front: "La culture régionale", back: "Regional/local culture" },
+            { category: "souscultures", front: "Un marginal", back: "Outsider/misfit" },
+            // Langue et identité
+            { category: "langue", front: "La langue maternelle", back: "Mother tongue/home language" },
+            { category: "langue", front: "Etre bilingue", back: "Be bilingual" },
+            { category: "langue", front: "Connaître des langues développe son ouverture d'esprit.", back: "Knowing languages develops open-mindedness." },
+            { category: "langue", front: "La carte d'identité", back: "ID card" },
+            // L'identité culturelle: la francophonie
+            { category: "francophonie", front: "Un pays francophone", back: "French-speaking country" },
+            { category: "francophonie", front: "Plus de 235 millions de personnes ont le français en partage.", back: "More than 235 million people have French in common." }
+        ];
+
+        let currentIndex = 0;
+        let filteredFlashcards = flashcards;
+        let mode = 'learn';
+        let quizScore = 0;
+        let quizTotal = 0;
+        let quizAnswered = false;
+
+        const flashcard = document.getElementById('flashcard');
+        const front = document.getElementById('front');
+        const back = document.getElementById('back');
+        const progress = document.getElementById('progress');
+        const learnContainer = document.getElementById('learn-container');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizQuestion = document.getElementById('quiz-question');
+        const quizOptions = document.getElementById('quiz-options');
+        const scoreDisplay = document.getElementById('score');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+
+        function updateCard() {
+            if (mode === 'learn') {
+                front.textContent = filteredFlashcards[currentIndex].front;
+                back.textContent = filteredFlashcards[currentIndex].back;
+                flashcard.classList.remove('flipped');
+                updateProgress();
+            } else {
+                setupQuiz();
+            }
+        }
+
+        function flipCard() {
+            if (mode === 'learn') {
+                flashcard.classList.toggle('flipped');
+            }
+        }
+
+        function nextCard() {
+            if (mode === 'learn' || quizAnswered) {
+                currentIndex = (currentIndex + 1) % filteredFlashcards.length;
+                quizAnswered = false;
+                updateCard();
+            }
+        }
+
+        function prevCard() {
+            if (mode === 'learn' || quizAnswered) {
+                currentIndex = (currentIndex - 1 + filteredFlashcards.length) % filteredFlashcards.length;
+                quizAnswered = false;
+                updateCard();
+            }
+        }
+
+        function updateProgress() {
+            const percentage = ((currentIndex + 1) / filteredFlashcards.length) * 100;
+            progress.style.width = `${percentage}%`;
+        }
+
+        function changeCategory() {
+            const category = document.getElementById('category').value;
+            filteredFlashcards = category === 'all' ? flashcards : flashcards.filter(card => card.category === category);
+            currentIndex = 0;
+            quizScore = 0;
+            quizTotal = 0;
+            quizAnswered = false;
+            updateCard();
+            updateScore();
+        }
+
+        function switchMode(newMode) {
+            mode = newMode;
+            modeButtons.forEach(btn => btn.classList.remove('active'));
+            modeButtons[newMode === 'learn' ? 0 : 1].classList.add('active');
+            learnContainer.style.display = newMode === 'learn' ? 'block' : 'none';
+            quizContainer.style.display = newMode === 'quiz' ? 'flex' : 'none';
+            currentIndex = 0;
+            quizScore = 0;
+            quizTotal = 0;
+            quizAnswered = false;
+            updateCard();
+            updateScore();
+        }
+
+        function setupQuiz() {
+            const card = filteredFlashcards[currentIndex];
+            quizQuestion.textContent = card.front;
+            quizOptions.innerHTML = '';
+            const options = [card.back];
+            while (options.length < 4) {
+                const randomCard = flashcards[Math.floor(Math.random() * flashcards.length)];
+                if (!options.includes(randomCard.back) && randomCard.back !== card.back) {
+                    options.push(randomCard.back);
+                }
+            }
+            shuffleArray(options);
+            options.forEach(option => {
+                const div = document.createElement('div');
+                div.className = 'quiz-option';
+                div.textContent = option;
+                div.onclick = () => selectOption(option, card.back);
+                quizOptions.appendChild(div);
+            });
+            updateProgress();
+        }
+
+        function selectOption(selected, correct) {
+            if (quizAnswered) return;
+            quizAnswered = true;
+            quizTotal++;
+            if (selected === correct) {
+                quizScore++;
+            }
+            const options = quizOptions.children;
+            for (let option of options) {
+                if (option.textContent === correct) {
+                    option.classList.add('correct');
+                } else if (option.textContent === selected) {
+                    option.classList.add('incorrect');
+                }
+                option.style.pointerEvents = 'none';
+            }
+            updateScore();
+        }
+
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${quizScore}/${quizTotal}`;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Initialize
+        updateCard();
+        updateScore();
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (mode === 'learn') {
+                if (e.key === 'ArrowRight') nextCard();
+                if (e.key === 'ArrowLeft') prevCard();
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    flipCard();
+                }
+            } else if (quizAnswered) {
+                if (e.key === 'ArrowRight') nextCard();
+                if (e.key === 'ArrowLeft') prevCard();
+            }
+        });
+    </script>
+</body>
+</html>
