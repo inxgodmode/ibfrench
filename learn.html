@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IB French B - Expériences Vocabulary Tool (No Server)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Arial', sans-serif; }
+        .tool-section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+        .option { transition: background-color 0.2s ease-in-out; }
+        .option:hover { background-color: #e0f7fa; cursor: pointer; }
+        .correct-selected { background-color: #c8e6c9 !important; border-color: #4caf50 !important; }
+        .incorrect-selected { background-color: #ffcdd2 !important; border-color: #f44336 !important; }
+        .actual-correct { background-color: #a5d6a7; border-color: #388e3c; }
+        .feedback-correct { color: green; font-weight: bold; }
+        .feedback-incorrect { color: red; font-weight: bold; }
+
+        /* Flashcard styles */
+        .flashcard-container { perspective: 1000px; margin-bottom: 1rem; }
+        .flashcard {
+            width: 300px;
+            height: 200px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 0 auto;
+        }
+        .flashcard.is-flipped { transform: rotateY(180deg); }
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            text-align: center;
+            padding: 15px;
+            box-sizing: border-box;
+            border-radius: 10px;
+            overflow-y: auto;
+        }
+        .flashcard-front { background-color: #fff; color: #333; }
+        .flashcard-back { background-color: #f0f0f0; color: #333; transform: rotateY(180deg); }
+        .nav-button {
+            background-color: #4a90e2; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin: 0 5px;
+        }
+        .nav-button:hover { background-color: #357abd; }
+        #topic-filter-flashcards, #topic-filter-quiz { margin-bottom: 1rem; padding: 0.5rem; border-radius: 5px; border: 1px solid #ccc;}
+    </style>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-center">IB French B - Expériences Vocabulary Tool</h1>
+
+        <!-- Flashcard Section -->
+        <div class="tool-section">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Flashcards</h2>
+            <div class="text-center mb-4">
+                <label for="topic-filter-flashcards">Filter by Topic:</label>
+                <select id="topic-filter-flashcards"></select>
+            </div>
+            <div id="flashcard-display" class="text-center">
+                <div class="flashcard-container">
+                    <div id="flashcard" class="flashcard">
+                        <div class="flashcard-face flashcard-front" id="flashcard-front">Loading...</div>
+                        <div class="flashcard-face flashcard-back" id="flashcard-back"></div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button id="prev-flashcard" class="nav-button">Previous</button>
+                    <span id="flashcard-counter" class="mx-2"></span>
+                    <button id="next-flashcard" class="nav-button">Next</button>
+                </div>
+                 <button id="shuffle-flashcards" class="nav-button mt-2">Shuffle Current Deck</button>
+            </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div class="tool-section">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Vocabulary Quiz</h2>
+            <div class="text-center mb-4">
+                <label for="topic-filter-quiz">Filter by Topic:</label>
+                <select id="topic-filter-quiz"></select>
+            </div>
+            <div id="quiz-container"></div>
+            <div id="quiz-score" class="mt-4 text-center font-bold"></div>
+        </div>
+    </div>
+
+    <script>
+        // PASTE YOUR JSON DATA HERE
+        const experiencesJsonData = {
+          "Expériences": {
+            "Activités de loisirs": {
+              "Le temps libre": "Free time",
+              "Les loisirs (m)": "Spare time (leisure time)",
+              "Le loisir/le passe-temps": "Pastime",
+              "L'équilibre (m) études-loisirs/travail-vie personnelle": "Work-life balance",
+              "Se libérer (se vider) l'esprit (m)": "To free (clear) one's mind",
+              "Se changer les idées (f)/s'évader": "To take your mind off things/ to escape",
+              "S'intéresser à": "To be interested in",
+              "Se passionner pour/avoir une passion pour/avoir la passion de": "To have a passion for",
+              "Se détendre/se relaxer/se divertir": "To unwind/to relax/to have some fun",
+              "Lever le pied (fam) (id)": "To chill out/to slow down",
+              "Se défouler (fam)": "To unwind (let off steam)",
+              "Je suis un peu pantouflard(e). (fam)": "I'm a bit of a stay-at-home person",
+              "Mon truc, c'est ... (fam)": "Personally, I'm into ...",
+              "Ça, ce n'est (vraiment) pas mon truc! (fam)": "That's (really) not my thing!",
+              "Je n'ai pas beaucoup de moments de libre dans la journée.": "I don't have a lot of free time during the day.",
+              "L'activité préférée des jeunes pendant leur temps libre, c'est de sortir entre copains.": "Young people's favourite activity in their free time is going out with friends.",
+              "C'est important d'avoir des activités de loisirs à la fois relaxantes et épanouissantes.": "It's important to have leisure activities that are both relaxing and fulfilling.",
+              "Mes amis et moi consacrons la plupart de notre temps libre à nos activités pour le programme CAS.": "My friends and I spend most of our free time on our CAS activities.",
+              "Ce qui attire de plus en plus de jeunes, ce sont les loisirs solitaires, comme faire du bénévolat pour une association.": "What attracts more and more young people are community-based leisure activities, such as volunteering for charity.",
+              "Ce que certains préfèrent, c'est passer du temps chez eux, en famille.": "What some people prefer is to spend time at home with their families.",
+              "Ce dont nous avons tous besoin, c'est de décompresser après une longue journée de travail.": "What we all need is to chill out after a long day at work.",
+              "Ma passion, c'est le modélisme, ce à quoi je m'adonne pendant tous mes moments de détente.": "My passion is model making, to which I devote all my leisure time"
+            },
+            "Activités sportives": {
+              "Le sport individuel/collectif": "Individual/team sport",
+              "Un sport équestre/de glisse": "Equestrian/board sport",
+              "Un sport aquatique/nautique": "Water sport",
+              "Un sport extrême": "Extreme sport",
+              "Une discipline sportive": "Sport/sport discipline",
+              "Un entraînement": "Training",
+              "Une rencontre sportive": "Sports event/sports match",
+              "Une course à pied/cycliste/hippique/automobile": "running/cycle/horse/motor race",
+              "Faire partie d'une équipe/être membre d'un club": "To be part of a team/to be a member of a club",
+              "Faire une partie de tennis/un match de handball": "To play a game of tennis/to be in a handball match",
+              "Participer à un tournoi de rugby/un championnat d'athlétisme/un concours de pêche": "To take part in a rugby tournament/a track and field championship/a fishing contest",
+              "Faire un sport (de compétition/de haut niveau)": "To do a (competitive/high level) sport",
+              "Faire de [+ sport individuel] : faire du tir à l'arc/de la natation/de l'équitation (f)/des claquettes (f)": "To do [individual sports] : archery/swimming/horse-riding/to tap dance",
+              "Jouer à [+ sport collectif] : jouer au futsal/à la pelote basque/aux boules (f)": "To play [team sports] : futsal/basque pelota/bowls",
+              "Passer des heures sur un terrain de foot/un court de tennis/dans une salle de gym (de fitness)/au centre sportif/à la piscine/à la patinoire": "To spend hours on the football pitch/on a tennis court/in a gym/at the sports centre/at the pool/at the ice rink",
+              "J'ai entraînement trois fois par semaine.": "I have training three times a week.",
+              "Je m'intéresse aux sports en tant que spectateur/spectatrice": "I am interested in sports only as a spectator.",
+              "C'est un sportif de salon! (fam)": "He is an armchair sportsperson!",
+              "Ma seule forme d'exercice, c'est sortir mon chien deux fois par jour et me promener en famille.": "My only form of exercise is to take my dog out twice a day and to go for walks with my family.",
+              "Personnellement, je ne supporte pas les salles de fitness alors je les évite le plus possible.": "Personally, I can't stand gyms so I avoid them as much as possible.",
+              "En ce qui me concerne, je sais que j'ai besoin de la dose d'adrénaline que me procurent les sports intenses comme l'escalade.": "As far as I'm concerned, I know that I need the adrenaline boost that comes from intense sports like rock climbing.",
+              "Quant à moi, le sport et surtout une occasion de passer du temps avec des amis.": "As for me, sport is above all an opportunity to spend time with friends."
+            },
+            "Activités créatives et artistiques": {
+              "La peinture/la sculpture/le dessin": "Painting/sculpture/drawing",
+              "Le créacollage (au Québec)/le scrapbooking": "Scrapbooking",
+              "La poterie": "Pottery",
+              "Le bricolage/le jardinage": "Do-it-yourself (DIY)/gardening",
+              "La musique/le théâtre": "Music/theatre (drama)",
+              "L'écriture (f) (d'un blog)": "(Blog) writing",
+              "Tricoter/faire du tricot": "To knit",
+              "Coudre/faire de la couture": "To sew",
+              "Cuisiner/faire de la cuisine": "To cook",
+              "Collectioner/faire une collection": "To collect",
+              "Faire de la photo": "To do photography",
+              "S'inscrire à un atelier de dessin": "To join a drawing workshop",
+              "Pratiquer un instrument de musique": "To play a musical instrument",
+              "Prendre des leçons de piano/violon/guitare": "To take piano/violin/guitar lessons",
+              "Chanter dans une chorale/jouer dans un orchestre": "To sing in the choir/to play in an orchestra",
+              "Participer à des spectacles de danse": "To take part in dance shows",
+              "Je fais partie d'un groupe théâtrale amateur et nous présentons deux spectacles chaque année.": "I am part of an amateur theatre group and we put on two shows a year.",
+              "Je me suis inscrit(e) à un cours d'initiation à la robotique et j'ai déjà gagné plusieurs concours.": "I joined an introductory course in robotics and I have already won several competitions.",
+              "Pour CAS, je me suis donné comme défi personnel de monter une exposition de mes tableaux.": "For CAS, I gave myself the personal challenge of setting up an exhibition of my own paintings.",
+              "Les loisirs créatifs sont devenus un phénomène de mode qui est de plus en plus commercialisé.": "Creative leisure pursuits have become a fashion phenomenon that is increasingly commercialised.",
+              "Les activités manuelles et artistiques sont très tendance en France, y compris chez les jeunes.": "Arts and crafts are very trendy in France, including among young people.",
+              "Le « fait-main» est un secteur en plein essor et exprime sans doute l'envie de consommer différemment.": "Hand-made items are a booming sector and it probably is a sign we want to consume differently."
+            },
+            "Pratiques culturelles": {
+              "La télévision/la lecture": "Television/reading",
+              "Le jeu de société": "Board game",
+              "Le jeu vidéo/le jeu électronique/le jeu en ligne": "Video/electronic games/online gaming",
+              "Les réseaux (m) sociaux": "Social networks",
+              "Ecouter la radio": "To listen to the radio",
+              "Jouer aux échecs/aux cartes": "To play chess/cards",
+              "Se cultiver": "To educate yourself",
+              "Aller (voir un film) au cinéma": "To go and see a film at the cinema",
+              "Aller voir une pièce de théâtre": "To go and see a play (at the theatre)",
+              "Aller à un concert (de musique classique/rock)": "To go to a (classical/rock) concert",
+              "Assister à un spectacle (musical/de danse/de cirque)": "To see a (musical/dance/circus) show",
+              "Aller voir une exposition au musée": "To go and see an exhibition at a museum",
+              "Aller dans un centre de loisirs": "To go to a leisure centre/a holiday camp (for children)",
+              "La plupart des jeunes aiment aller à des soirées entre copains et sortir en boite (de nuit), surtout quand il y a un bon DJ.": "Most young people like to go to parties with friends and go clubbing, especially when there is a good DJ.",
+              "En France, beaucoup d'enfants sont abonnés à des magazines jeunesse.": "In France, many children subscribe to youth magazines.",
+              "Depuis l'avènement du numérique, on fréquente moins les bibliothèques et on empreinte moins de livres.": "Since the advent of digital technology, fewer people use libraries and people borrow fewer books.",
+              "Il me semble que beaucoup de jeunes ont surtout envie d'assister à de grands rassemblements comme les festivals, les raves, ou les soirées entre amis.": "It seems to me that many young people much prefer attending large gatherings such as festivals, raves or parties with friends.",
+              "Il semble que le niveau de scolarité et le coût souvent prohibitif des billets aient un effet sur la participation des jeunes à certaines activités culturelles.": "It seems that the level of education and the often prohibitive cost of tickets have an impact on young people's participation in certain cultural activities."
+            },
+            "Vacances et voyages": {
+              "Bonnes vacances!": "Have a good holiday!",
+              "Les grandes vacances (f)/les vacances scolaires": "Summer holidays/school holidays",
+              "Les congés (m) (payés)": "(Paid) leave",
+              "Des vacances chez soi/à la maison": "Holidays at home/staycations",
+              "Des vacances au bord de la mer/à la campagne/à la montagne": "Holidays by the sea/in the countryside/in the mountains",
+              "Un séjour linguistique (à l'étranger)": "Language study holiday (abroad)",
+              "Un chantier de bénévoles/de restauration du patrimoine": "Volunteer/heritage restoration site project",
+              "La colonie/le camp de vacances": "Summer camp",
+              "Des vacances solidaires/humanitaires": "Community work, volunteering during your holiday",
+              "Des activités (f) organisées/un circuit touristique": "Organised activities/a tour",
+              "Une station balnéaire/de sports d'hiver": "Seaside/winter sport resort",
+              "Une formule vacances tout compris/un forfait-vacances tout inclus": "All-inclusive/package holiday",
+              "L'hébergement (m)": "Accommodation",
+              "Sous la tente/dans une caravane/dans un mobile home": "In a tent/in a caravan/in a mobile home",
+              "(Aller) à l'hôtel (m)/dans une auberge de jeunesse/dans un club de vacances/dans une location/dans un gite/en chambre d'hôte/chez l'habitant (m)": "(To stay) in a hotel/in the youth hostel/in a holiday resort/in a holiday rental/in a gite/in a guesthouse/with a local host.",
+              "Partir seul(e)/en famille/avec des amis": "To go alone/with your family/with friends",
+              "Séjourner/faire un séjour (sur la côte)": "To stay (at the seaside)",
+              "Faire du camping (sauvage)": "To go (wild/off-site) camping",
+              "Faire du couchsurfing": "To do couchsurfing",
+              "Faire du tourisme": "To sightsee",
+              "Faire des excursions (f) (à la journée)": "To go (on day) sightseeing trips",
+              "Pour moi, les vacances riment avec grasse matinée/farniente/se la couler douce (id)/bronzer à la plage": "For me, holidays mean sleeping in/chilling out/taking it easy/sunbathing at the beach",
+              "Moi, j'ai la bougeotte (fam) et je préfère profiter pleinement de vacances actives en faisant le maximum de choses.": "I personally have itchy feet/am always on the move and I like to enjoy active holidays to the full by doing as many things as I can.",
+              "Pour réussir ses vacances, il faut bien choisir son lieu de villégiature, par exemple un endroit avec une vie nocturne calme ou animée selon ses goûts.": "To have a successful holiday, you must carefully choose where to stay, for instance a place with a quiet or lively night life according to what you like.",
+              "Il faut faire état de l'importance des vacances pour l'esprit et le corps, pour oublier le quotidien et recharger ses batteries.": "It is important to mention the importance of holidays for body and mind, to have a break from routine and recharge your batteries.",
+              "Il faut bien souligner que les congés accordés aux employés profitent aussi aux employeurs par la hausse de la productivité et un meilleur moral au travail.": "It should be emphasised that granting holidays to employees also benefits employers by increasing productivity and improving morale at work.",
+              "On doit préciser que les vacances idéales n'impliquent pas forcément un voyage et qu'il est aussi profitable de rester à la maison à se détendre.": "It should be noted that an ideal holiday does not necessarily imply a trip and that it is just as beneficial to stay at home and relax.",
+              "Bon voyage !": "Have a good trip!",
+              "Le trajet/l'itinéraire (m)": "Trip, journey/itinerary",
+              "(En) voiture/train/avion/bateau": "By car/train/plane/boat",
+              "(A) moto/vélo/pied": "By motorbike/by bike/on foot",
+              "En retard/retardé/annulé": "Late/delayed/cancelled",
+              "La haute saison/la basse saison": "High/low season",
+              "Une brochure/un dépliant (touristique)": "(Tourist) brochure/leaflet",
+              "Des vacances bon marché": "Cheap holidays",
+              "Prendre un vol low-cost/direct (avec escale)": "To take a low-cost/direct flight (with a stopover)",
+              "Faire une croisière (en péniche)": "To go on a (houseboat) cruise",
+              "Rater l'avion (m)/la correspondance": "To miss the plane/the connection",
+              "Composter le billet": "To validate the ticket",
+              "Consulter les horaires (m)": "To check the timetable",
+              "Acheter un aller simple/un aller-retour (en ligne)": "To buy a one-way/return ticket (online)",
+              "Réserver un siège/une cabine (en classe économie)": "To book a seat/a cabin (in economy class)",
+              "Faire une réservation à l'avance/à la dernière minute": "To book in advance/at the last minute",
+              "Faire un voyage organisé/voyager en individuel": "To go on a package tour/to travel independently",
+              "Louer une voiture/prendre une voiture de location": "To rent a car/to get a rental car",
+              "Faire de l'auto-stop (m)/faire du pouce (au Québec)": "To hitch-hike",
+              "Faire/défaire ses bagages/ses valises": "To pack/unpack",
+              "Enregistrer ses bagages en soute/de cabine/à main": "To check in your hold/cabin/hand luggage",
+              "Passer les contrôles(m) de sécurité /passer la douane": "To go through security/customs",
+              "Certaines personnes ne supportent pas le décalage horaire et on le mal des transports/le mal de mer.": "Some people suffer from jet lag and get motion sickness/seasick.",
+              "«Un jeune qui a beaucoup voyagé est plus âgé qu'un vieux qui est toujours resté au village. » (proverbe du Gabon)": "\"A well-travelled young person is older than an old man who has always stayed in the village.\" (Meaning the travel broadens the mind)",
+              "Pour certains jeunes, un voyage scolaire, c'est quitter le nid familial et leur zone de confort pour la première fois.": "For some young people, a school trip means leaving the family nest and their comfort zone for the first time.",
+              "Un forfait-vacances ne plaira pas à une personne qui cherche l'aventure mais à celle qui veut que tout soit soit organisé à l'avance.": "A package holiday won't be for someone who is looking for adventure but for someone who wants everything to be organised in advance.",
+              "Selon moi, le vrai voyageur et celui qui veut élargir ses horizons et découvrir les réalités sociales, culturelles et historiques des pays qu'il visite.": "In my opinion, a true traveller is someone who wants to broaden their horizons and discover the social, cultural and historical realities of the countries they visit.",
+              "Les voyages à l'étranger apportent un enrichissement intellectuel et culturel à ceux qui prennent du recul par rapport à leurs propres pratiques culturelles.": "Travel abroad provides intellectual and cultural enrichment for those who take a step back from their own cultural practices.",
+              "Les personnes qui trouvent les voyages stressants sont souvent celles qui ont peur de s'ouvrir sur de nouvelles façons d'être et de faire.": "People who find travel stressful are often those who are afraid to open up to new ways of being and doing."
+            },
+            "Bienfaits du tourisme": {
+              "Les qualités (f) d'un bon touriste : curieux, respectueux, ouvert, sociable, discret, propre": "Qualities of a good tourist : curious, respectful, open, sociable, discreet, clean",
+              "L'écotourisme (m)/le tourisme responsable/le tourisme éthique": "Ecotourism/responsible tourism/ethical tourism",
+              "Une destination touristique populaire/prisée/phare": "Popular/sought-after/key tourist destination",
+              "Un lieu inscrit au patrimoine mondial": "World Heritage Site",
+              "Un site protégé": "Protected site",
+              "Des échanges (m) culturels": "Cultural exchanges",
+              "Une source de revenus/un apport de fonds pour les communautés (f) locales": "Source of income/funds for local communities",
+              "La création d'emplois (saisonniers)": "(Seasonal) job creation",
+              "Sortir des sentiers (m) battus": "To go off the beaten track",
+              "Faire un retour à la nature": "To return to nature",
+              "Goûter aux produits du terroir": "To taste the local specialities",
+              "Développer l'artisanat (m) local": "To develop local crafts/the local craft economy",
+              "Redonner vie à des régions dépeuplées": "To revive depopulated regions",
+              "Dynamiser l'économie locale et générer des emplois": "To boost the local economy and generate jobs",
+              "Selon le proverbe, les voyages forment la jeunesse.": "According to the proverb, travel broadens young people's mind.",
+              "Le tourisme représente un apport de capitaux étrangers qui est bénéfique à toute l'économie locale.": "Tourism brings in foreign capital that benefits the entire local economy.",
+              "Le tourisme peut contribuer de manière significative à la réduction de la pauvreté dans un pays.": "Tourism can make a significant contribution to reducing poverty in a country.",
+              "Le tourisme vert permet aux agriculteurs de continuer à maintenir et protéger la nature.": "Green tourism allows farmers to continue to maintain and protect nature.",
+              "L'écotourisme permet de découvrir un monde authentique tout en contribuant au développement économique de la région.": "Ecotourism allows you to discover an authentic world while contributing to the economic development of the region.",
+              "Grâce au tourisme, une région ou un pays peut moderniser ses infrastructures, comme les routes, les aéroports, les hôpitaux, tout en exigeant le respect de sa population et de l'environnement.": "Thanks to tourism, a region or country can modernise its infrastructure, such as roads, airports, hospitals, whilst demanding respect for its population and the environment.",
+              "L'agri ou agrotourisme, ou tourisme à la ferme, permet de découvrir le savoir-faire agricole d'un territoire, ses pratiques sociales et ses spécialités culinaires sans pour autant nuire à l'environnement.": "Agri or agrotourism, or farm tourism, allows you to discover the agricultural know-how of an area, its social practices and its culinary specialities without actually harming the environment.",
+              "L'intérêt des touristes pour les cultures locales contribue au maintien des coutumes, des traditions et du patrimoine architectural sans pour autant qu'elles deviennent un spectacle pour touristes.": "Tourists' interested in local cultures contributes to maintaining customs, traditions and architectural heritage without them becoming a tourist show."
+            },
+            "Méfaits du tourisme": {
+              "Les défauts (m) du mauvais touriste : fermé, irrespectueux, intolérant, malpoli, râleur, pollueur": "The faults of the bad tourist : narrow-minded, disrespectful, intolerant, rude/grumpy, dissatisfied, polluter",
+              "Un piège à touristes": "Tourist trap",
+              "Les arnaques (f) touristiques/les arnaques de voyage": "Tourism scams/travel scams",
+              "Le tourisme de masse": "Mass tourism",
+              "L'impact (m) environnemental/social du tourisme": "Environmental/social impact of tourism",
+              "Des hordes (f) de touristes": "Hordes of tourists",
+              "La circulation/les embouteillages (m)": "Traffic/traffic jams",
+              "Le surdéveloppement/la bétonisation du littoral": "Overdevelopment of/massive construction along the coastline",
+              "La saturation de certaines destinations": "Saturation of certain destinations",
+              "La fragilisation/la dégradation des sites (m)": "Damage to/degradation of sites",
+              "La pollution et la diminution de la biodiversité": "Pollution and loss of biodiversity",
+              "L'augmentation du coût de la vie pour les autochtones": "Increase in the cost of living for local people",
+              "Souffrir des effets néfastes du tourisme": "To suffer from the negative effects of tourism",
+              "Générer des nuisances sonores/générer des déchets": "To generate noise pollution/waste",
+              "Causer des dégâts irréversibles sur la faune et la flore": "To cause irreversible damage to flora and fauna",
+              "De plus en plus de logements sont transformés en locations saisonnières.": "More and more homes are being converted into seasonal rentals.",
+              "Louer ou acheter un logement devient inabordable pour la population locale.": "Renting or buying a house is becoming unaffordable for the local population.",
+              "Le tourisme noir consiste à visiter des lieux associés à la violence, à la catastrophe ou à la mort.": "Dark tourism is about visiting places associated with violence, disaster or death.",
+              "Certaines destinations touristiques sont au bord de l'asphyxie à cause de l'afflux saisonnier de vacanciers.": "Some tourist destinations are on the verge of paralysis due to the seasonal influx of holidaymakers.",
+              "L'apport économique du tourisme est un mythe car en fait, les emplois qu'il crée sont saisonniers et donc précaires.": "The economic contribution of tourism is a myth because, in fact, the jobs it creates are seasonal and therefore unstable.",
+              "Bien que les infrastructures soient nécessaires au tourisme de masse, elles dépassent les besoins de la population locale qui doit pourtant les financer les entretenir.": "Although infrastructure is needed for mass tourism, it exceeds the needs of the local population, which still has to finance and maintain them.",
+              "Quelle que soit l'importance du tourisme, il peut mener à la folklorisation de la culture locale, qui se réduit à un divertissement pour touristes et perd sa réalité.": "No matter how important tourism is, it can lead to the folklorisation of the local culture, which is reduced to being a tourist attraction and is no longer real.",
+              "Il se peut que l'intention des touristes prenant part à des actions humanitaires soit bonne, mais le « volontourisme» transforme la pauvreté en attraction touristique et perpétue les stéréotypes.": "It is possible that the intention of tourist taking part in humanitarian actions may be good, but \"voluntourism\" (or volunteer tourism) transforms poverty into a tourist attraction and perpetuates stereotypes."
+            },
+            "Récits de vie": {
+              "Etapes de la vie": {
+                "La naissance": "Birth",
+                "L'enfance (f)": "Childhood",
+                "L'adolescence (f)": "Teenager years, adolescence",
+                "La jeunesse": "Youth",
+                "L'âge adulte/l'âge mûr": "Adulthood/middle age",
+                "La vieillesse": "Old age",
+                "Le décès/la mort": "Death",
+                "La grossesse": "Pregnancy",
+                "La maternité": "Maternity",
+                "Un bébé/un nourrisson/un nouveau-né": "Baby/infant/newborn",
+                "Un enfant en bas âge": "Toddler",
+                "Un ado(lescent)": "Teenager, adolescent",
+                "Un (jeune) adulte": "(Young) adult",
+                "Une personne âgée, une personne du troisième âge/les seniors": "Elderly person/senior citizens",
+                "Avoir un petit copain/une petite copine": "To have a boyfriend/girlfriend",
+                "Avoir le coup de foudre (id)": "To fall in love at first sight",
+                "Vivre en couple": "Living together (as a couple)",
+                "Fonder une famille": "To start a family",
+                "Etre/tomber enceinte": "To be/get pregnant",
+                "Attendre un enfant": "To be expecting (a child)",
+                "Accoucher/mettre au monde un bébé": "To give birth",
+                "Aller à l'école maternelle/primaire/au college/au lycée/à l'université": "To go to nursery school/primary school/secondary school/high school/university or college (US)",
+                "Poursuivre des études (f) supérieures": "To go into higher education",
+                "Suivre une formation": "To do a training course",
+                "Apprendre un métier": "To learn a trade",
+                "Entrer dans la vie active": "To start working",
+                "Obtenir son premier emploi": "To get your first job",
+                "Prendre sa retraite": "To retire",
+                "Vieillir": "To grow old",
+                "Décéder/mourir": "To die",
+                "Très peu de gens se souviennent de leur petite enfance.": "Very few people remember their early childhood.",
+                "Certaines cultures célèbrent le passage d'une étape de la vie à l'autre par des cérémonies.": "Some cultures celebrate the transition from one stage of life to another with ceremonies.",
+                "La vieillesse et la mort sans tabous dans certaines sociétés.": "Old age and death are taboo in some societies.",
+                "Le vieux se chauffe avec le bois récolté dans sa jeunesse. (proverbe africain)": "\"The old man heats himself with the wood he harvested in his youth.\" (African proverb meaning in old age we reap the benefits of the hard work of our youth)",
+                "On dit que la vie est faite d'étapes qu'il faut franchir mais ne pas brûler.": "Life is said to be made of stages that you must go through rather than skip over.",
+                "On entend souvent dire que l'adolescence est l'étape la plus difficile de la vie parce que c'est une période de transition entre l'enfance et l'âge adulte.": "It is often said that adolescence is the most difficult stage of life because it is a transition between childhood and adulthood.",
+                "Certains affirment que la crise de l'adolescence n'est pas un passage obligé et qu'il est possible de vivre son adolescence de façon sereine.": "Some say that the troubled teenage years are not inevitable and that you can go through your teens smoothly and serenely.",
+                "Selon un grand nombre de gens, la meilleure étape de la vie et celle entre 18 et 35 ans quand on s'épanouit au travail et en famille.": "According to many people, the best time of life is between the ages of 18 and 35 when you're happy at work and with your family.",
+                "A en croire certains, le plus bel âge dans la vie serait celui du passage à la retraite quand on peut prendre le temps de se faire plaisir.": "According to some, the best stage in your life maybe retirement when you can take the time to enjoy yourself."
+              },
+              "Parcours personnel": {
+                "Les origines/les racines": "Origins/roots",
+                "Les influences": "Influences",
+                "Les moments marquants/les événements majeurs": "Milestones/major life events",
+                "Le meilleur/pire souvenir": "The best/worst memory",
+                "Tout d'abord/en premier lieu": "First of all/in the first place",
+                "Quand j'avais X ans ...": "When I was X years old...",
+                "Durant cette période/pendant ce temps": "During this period/time",
+                "En parallèle": "At the same time, concurrently",
+                "Ensuite, puis/après": "Then/after",
+                "C'est ainsi que": "That's how",
+                "Depuis ce moment-là/ce temps-là": "Since that time",
+                "Suite à/à l'issue de": "Following/as a result of",
+                "Se présenter": "To introduce oneself",
+                "Etre originaire de ...": "To be/come from...",
+                "Suivre un parcours (atypique)": "To follow and (atypical) path",
+                "Etre le point de départ de ...": "To be the starting point for...",
+                "Faire ses premiers pas dans ...": "To take your first steps in...",
+                "Marquer un tournant/la fin de": "To mark a turning point/the end of",
+                "Avoir la chance de": "To have the opportunity to",
+                "Avoir de la chance": "To be lucky",
+                "Avoir la nostalgie de": "To yearn for, to miss",
+                "Ecrire un journal intime": "To keep a diary",
+                "Je suis né(e) et j'ai grandi en France.": "I was born and raised in France.",
+                "Le passé de ma famille a une grande importance pour moi et influence ma vie.": "My family's past is very important to me and influences my life.",
+                "J'estime qu'il est essentiel de savoir d'où on vient pour pouvoir savoir qui on est et ce qu'on veut faire.": "I think it is essential to know where you come from in order to know who you are and what you want to do.",
+                "Le moment dont je me souviens le mieux, c'est notre déménagement à l'étranger quand j'avais 8 ans": "The moment I best remember is when we moved abroad when I was 8 years old.",
+                "Notre installation à Dubai est un événement qui a tout changé dans ma vie.": "Our move to Dubai is an event that changed my whole life.",
+                "L'endroit ou j'ai été le plus heureux pendant mon enfance, c'est chez mes grands-parents où je passais tous les étés.": "The place where I was happiest as a child was at my grandparents' house where I spent every summer.",
+                "Mon meilleur souvenir, c'est sans doute le jour où mes parents m'ont donné un chien!": "My best memory is probably the day when my parents gave me a dog!",
+                "Mon premier jour à l'école internationale est un moment que je n'oublierai jamais.": "My first day at the international school is a time that I will never forget.",
+                "Avant de pouvoir parler la langue du pays, je me sentais très isolé(e).": "Before being able to speak the language of the country, I felt very isolated.",
+                "Avant que mes parents me fassent découvrir l'Asie, je voulais habiter aux États-Unis.": "Before my parents introduced me to Asia, I wanted to live in the United States.",
+                "Après avoir voyagé seul(e) plusieurs fois et après être allé(e) en camp de vacances, j'ai pris confiance en moi.": "After travelling alone several times and going to summer camp, I gained self-confidence.",
+                "Après que mes parents m'ont inscrit(e) dans des clubs, j'ai pu me faire de nouveaux amis.": "After my parents enrolled me in clubs, I was able to make new friends.",
+                "Avant raté mon examen d'entrée la première fois, j'ai redoublé d'efforts pour réussir!": "Having failed my entrance test the first time, I worked twice as hard to succeed!",
+                "N'étant jamais allé(e) dans le pays d'origine de mes parents, je me sens un peu déraciné(e).": "Having never been to my parents' country of origin, I felt a little uprooted."
+              },
+              "Récit biographiques": {
+                "Une (auto)biographie/une biographie romancée": "(Auto)biography/fictionalised biography",
+                "Un journal (intime)": "(Private) diary/journal",
+                "De mémoires (m)": "Memoirs",
+                "Un récit épistolaire": "Epistolary novels",
+                "Un témoignage/un récit de vie": "Account/life story",
+                "Une saga familiale": "Family saga",
+                "Un (auto)portrait": "(Self-)portrait",
+                "Se souvenir (de)": "To remember/recall",
+                "Témoigner": "To bear witness",
+                "Décrire des traits de caractère": "To describe personality traits",
+                "Retracer un parcours de vie": "To tell your life story",
+                "Raconter les événements déterminants de sa vie": "To narrate the key events in your life",
+                "Transmettre une expérience personnelle": "To pass on personal experience",
+                "Partager des moments intimes de sa vie privée": "To share intimate moments of one's private life",
+                "Replacer une personne dans son contexte historique": "To put a person back in their historical context",
+                "Expliquer le rôle joué par/l'importance de la personne": "To explain the role played by/the importance of the person"
+              }
+            },
+            "Rites de passage": {
+              "Les grands événements d'une vie": {
+                "Un rite (religieux)": "(Religious) rite",
+                "Un rite initiatique": "Initiation ritual",
+                "Le baptême": "Baptism",
+                "La première communion": "First (holy) communion",
+                "La circoncision": "Circumcision",
+                "Le bar mitzvah/bat mitzvah": "Bar mitzvah/bat mitzvah",
+                "Le mariage": "Marriage",
+                "Le passage à «la grande école»": "Going to \"big school\"(ie that is to primary from nursery)",
+                "L'entrée (f) en sixième": "Going to secondary school",
+                "Le baccalauréat": "Baccalaureate",
+                "Le diplôme": "Diploma/degree",
+                "La première voiture": "First car",
+                "La majorité à 18 ans": "Majority/coming of age at 18",
+                "La Journée Défense et Citoyenneté (JDC)": "Defence and Citizenship Day (replaced military service)",
+                "Réussir le bac/baccalauréat": "To pass the baccalaureate/the IB",
+                "Avoir le droit de vote": "To be able to vote",
+                "Passer son permis de conduire": "To get your driving license",
+                "Enterrer sa vie de garçon/sa vie de jeune fille": "To have a stag night/hen night",
+                "Faire l'expérience du bizutage": "To experience the newcomer's initiation ritual",
+                "Vivre une journée de bienvenutage (en entreprise) (au Québec)": "To have a welcome day (to a company)",
+                "Chacun célèbre son rite de passage à l'adolescence ou à l'âge adulte selon l'endroit où il vit et la culture dans laquelle il grandit.": "Everyone celebrates their rite of passage into adolescence or adulthood according to where they live and the culture in which they grow up.",
+                "Dans les sociétés traditionnelles, des rites d'initiation souvent violents accompagnent le passage de l'adolescent au statut d'adulte.": "In traditional societies, initiation rites that are often violent mark the transition from teenage to adulthood.",
+                "Le tatouage et le piercing, que l'on peut considérer comme des rites d'accession à un groupe, sont populaires chez les jeunes.": "Tattooing and piercing, which can be seen as rites of passage to a group, are popular among young people.",
+                "Il est des rites et des pratiques sociales qui doivent disparaitre, comme l'excision et les mutilations génitales féminines.": "There are rites and social practices that must be eradicated such as excision and female genital mutilation.",
+                "Le « syndrome du nid vide» affecte les parents dont les enfants quittent la maison pour l'université ou pour vivre seuls.": "\"The Empty Nest Syndrome\" affects parents whose children leave home for university or to live alone.",
+                "Suite à la crise économique, le « phénomène Tanguy », selon lequel les jeunes adultes restent plus longtemps chez leurs parents, retarde le départ rituel du foyer familial.": "Because of the economic crisis, the \"Tanguy syndrome\" where young adults live longer at their parents' home, delays the ritual departure from the family home. (The \"Tanguy syndrome\" comes from a French-speaking film where a man is reluctant to leave his parents' house.)"
+              }
+            },
+            "Coutumes et traditions": {
+              "Fêtes de famille": {
+                "Une célébration (laique/religieuse)": "(Secular/religious) celebration/\"do\"",
+                "La fête (du prénom)": "(Name day) special occasion, party",
+                "Un anniversaire/une fête (au Québec)": "Birthday",
+                "Un anniversaire de mariage": "Wedding anniversary",
+                "Un cadeau (de Noël/d'anniversaire/de mariage)": "(Christmas/birthday/wedding) present",
+                "Les étrennes (du premier de l'an)": "New Year's gift (money)",
+                "Le réveillon de Noël/de la Saint-Sylvestre": "Christmas Eve/New Year's Eve",
+                "La Fête des mères/des pères": "Mother's/Father's day",
+                "Un repas de famille/de fiançailles/de mariage": "Family/engagement/wedding meal",
+                "Une cérémonie civile (à la mairie)": "Civil ceremony (at the town hall) (wedding)",
+                "Une pendaison de crémaillère": "Housewarming party",
+                "Les réjouissances/les festivités": "Celebrations/festivities",
+                "Faire la fête": "To celebrate/have a party",
+                "Envoyer un faire-part (de mariage/de naissance)": "To send a wedding/birth announcement",
+                "Envoyer une carte de voeux": "To send a greeting card",
+                "Se réunir/se retrouver en famille": "To get together with family",
+                "Réveillonner": "To celebrate Christmas Eve/New Year's Eve",
+                "Se mettre sur son trente-et-un (fam) (id)": "To get dressed up",
+                "Prendre l'apéritif (l'apéro (fam))": "To have a pre-dinner drink",
+                "Prendre un verre/boire un pot/trinquer (fam)": "To have a drink",
+                "Jeter des cotillons à minuit": "The throw streamers/confetti at midnight",
+                "S'embrasser/se faire la bise (sous le gui)": "To kiss (underneath the mistletoe)",
+                "Se souhaiter Joyeux Noël/Bonne Année/Bon Anniversaire": "To wish one another Merry Christmas/Happy New Year/Happy Birthday",
+                "Beaucoup préfèrent ne pas manquer aux traditions, comme le jeûne du Carême ou du Ramadan.": "Many prefer not to miss traditions, such as fasting for Lent or Ramadan.",
+                "Selon moi, les fêtes peuvent maintenir ou resserrer les liens familiaux/intergénérationnels.": "In my opinion, special occasions maintain or strengthen family/intergenerational ties.",
+                "Toutes les sociétés célèbrent généralement les différentes étapes de la vie en famille : baptêmes, communions, fiançailles, mariages et obsèques.": "All societies tend to celebrate the different stages of life with family : baptisms, communions, engagements, weddings and funerals.",
+                "La plupart des Français célèbrent les fêtes religieuses comme la fête des Rois (l'Épiphanie) et Pâques en famille, qu'ils soient croyants ou pas.": "Most French people celebrate religious holidays such as Twelfth Night (Epiphany) and Easter with family, whether they are believers or not.",
+                "Noël est plus familial que le Nouvel An, celui-ci étant le plus souvent célébré entre amis.": "Christmas is more of a family occasion than New Year, the latter being mostly celebrated with friends.",
+                "Certains n'aiment pas l'idée d'une réunion de famille parce que celle-ci risque de réactiver ou d'intensifier des tensions familiales existantes.": "Some people do not like the idea of a family reunion because it may reactivate or intensify existing family tensions.",
+                "Quoi qu'en disent les gens qui trouvent les repas de famille longs et ennuyeux, ceux-ci permettent de partager des moments importants autour de valeurs communes.": "Regardless of what people say about long and boring family meals, they provide an opportunity to share important moments around common values.",
+                "Les détracteurs des fêtes de famille mentionnent souvent le fait que celles-ci sont devenues trop commercialisées, comme Pâques ou la Saint-Valentin.": "Those who dislike family occasions often mention the fact that they have become too commercialised, such as Easter or Valentine's Day."
+              },
+              "Jours de fêtes": {
+                "Un jour férié": "Public holiday",
+                "La Fête Nationale": "National Day",
+                "Un feu d'artifice": "Fireworks",
+                "Un bal (musette)": "Dance (with accordion music)",
+                "Une commémoration (l'Armistice de 1918/1945)": "Commemoration (the armistice of 1918/1945)",
+                "Une kermesse/fête des écoles": "School fête",
+                "Un stand": "Stall/table (eg at the school fête)",
+                "Défiler sur un char décoré": "To parade on a decorated float",
+                "Faire un tour à la fête foraine": "To go to the fun fair",
+                "Célébrer la fête du Travail/de la Musique/des Voisins": "To celebrate Labour Day/World Music Day/Neighbours' Day",
+                "Assister au défilé du carnaval/du 14 juillet/du 1* mai": "To attend the march/parade for Carnival/14 July/Labour Day",
+                "Favoriser un sentiment de cohésion nationale": "To foster a sense of national cohesion",
+                "Certaines fêtes ont pour but de commémorer les valeurs, comme la famille, l'éducation, le travail et le patriotisme pour souder une communauté.": "Some celebrations are intended to commemorate values, such as family, education, work and patriotism, as a way of uniting a community.",
+                "Pour la Toussaint, les Français se rendent au cimetière pour nettoyer et se recueillir sur les tombes de leurs proches disparus.": "For All Saints' Day, the French go to cemeteries to clean and reflect at the graves of their departed loved ones.",
+                "On célèbre la fête du Travail le 1\" mai par des défilés avec des slogans et des pancartes où sont écrites les revendications des syndicats de travailleurs.": "Labour Day is celebrated on $1^{\\text{st}}$ May by parades with slogans and signs that reflect the demands of workers' unions.",
+                "Des cérémonies sont organisées chaque année pour fêter l'Armistice du 11 novembre et rendre hommage à tous les soldats décédés en opération.": "Ceremonies are held annually to celebrate Armistice Day and to pay tribute to all the soldiers who died in action.",
+                "Des bleuets sont portés à la boutonnière pour symboliser le soutien et la solidarité envers les anciens combattants et leur famille.": "Cornflowers are worn in the lapel to symbolise support and solidarity for veterans and their families.",
+                "La fête de la Musique, mondialement connue, a été créée en France en 1982 par le ministre de la Culture de l'époque.": "The world-famous World Music Day was created in France in 1982 by the then Minister of Culture.",
+                "La tradition française d'offrir un brin de muguet comme porte-bonheur à ses proches le 1\"t mai à perduré après avoir été lancée au $16^{\\circ}$ siècle": "The French tradition of offering loved ones, a sprig of lily-of-the-valley to bring good luck on $1^{\\text{st}}$ May has continued after being introduced in the $16^{\\text{th}}$ century"
+              },
+              "Patrimoine et culture": {
+                "Le patrimoine architectural/industriel/historique/artistique/rural": "Architectural/industrial/historical/artistic/rural heritage",
+                "L'héritage (m) culturel": "Cultural heritage",
+                "Les journées du patrimoine": "Local heritage days",
+                "Les arts et traditions populaires/culinaires": "Popular/culinary arts and traditions",
+                "Le savoir-faire artisanal": "Craftsmanship",
+                "La rentrée littéraire": "Start of the new publishing season",
+                "Les archives nationales": "National archives",
+                "Un monument classé monument historique": "Listed historical monument",
+                "Le festival de Cannes (cinéma)/d'Avignon (théâtre)": "Cannes film festival/Avignon theatre festival",
+                "Le salon du Livre/de l'Agriculture/de l'Automobile": "Book fair/agricultural show/motor show",
+                "Faire un travail de conservation": "To do conservation work",
+                "Restaurer (un chef-d'œuvre)": "To restore (a masterpiece)",
+                "Protéger les sites naturels classés": "To protect conservation areas",
+                "Renforcer l'image du pays à l'étranger": "To enhance the country's image abroad",
+                "Conserver les témoignages du passé": "To preserve vestiges of the past",
+                "Préserver la mémoire collective d'une région/d'un pays": "To preserve the collective memory of regional/country",
+                "Les festivals sont une véritable institution en France, avec plus de 3000 événements culturels pendant l'année.": "Festivals are a real institution in France, with more than 3000 cultural events during the summer.",
+                "Il est tout aussi important de conserver et de célébrer le patrimoine immatériel, telles la gastronomie ou la danse.": "It is equally important to preserve and celebrate intangible cultural heritage, such as gastronomy or dance.",
+                "Le patrimoine artistique de beaucoup de pays colonisés a été pillé et j'estime qu'il devrait désormais leur être rendu.": "The artistic heritage of many colonised countries was looted and I believe that it should now be returned to them.",
+                "Selon moi, les musées sont nécessaires pour conserver, mettre en valeur et faire découvrir les richesses du patrimoine.": "In my opinion, museums are necessary to preserve, enhance and showcase our rich heritage.",
+                "Le travail de restauration doit être un choix entre faire reconstruire un monument historique endommagé à l'identique ou en le modernisant.": "Restoration work requires a choice between rebuilding a damaged historic monument exactly as it was or modernising it.",
+                "L'hymne national et le drapeau sont des symboles patriotiques forts qui font naitre un sentiment de fierté nationale et d'appartenance à une communauté.": "The national anthem and flag are strong patriotic symbols that create a sense of national pride and community."
+              }
+            },
+            "Migration": {
+              "Causes de l'immigration": {
+                "Le migrant (économique)": "(Economic) migrant (in the process of migrating)",
+                "Un émigré": "emigrant (leaving their country)",
+                "Un immigré": "Immigrant (settled in the new country)",
+                "Le réfugié politique/climatique": "Climate change refugee/political refugee",
+                "Le demandeur d'asile": "Asylum seeker",
+                "Le sans-papier": "Illegal immigrant",
+                "Le ressortissant": "Immigrant/foreign national/citizen",
+                "Un étranger": "Foreigner",
+                "Un apatride": "Stateless person",
+                "Un expatrié/expat (fam)": "Expatriate/expect",
+                "Un nomade planétaire": "Global nomad",
+                "Le pays d'origine/la terre natale": "Country of origin/homeland",
+                "Le pays d'asile/d'adoption": "Country of asylum/adoption",
+                "L'expatriation (f)": "Expatriation",
+                "Le titre de séjour": "Residence permit",
+                "Quitter son pays pour des raisons politiques/economiques/personnelles/familiales": "To leave your country for political/economic/personal/family reasons",
+                "S'enfuir d'une zone de guerre/conflit": "To flee a war/conflict zone",
+                "Fuir les persécutions/la misère": "To flee from persecution/from complete poverty",
+                "Échapper à une mort presque certaine": "To escape an almost certain death",
+                "Contrairement aux réfugiés, la plupart des expatriés font le choix délibéré de voyager pour poursuivre un rêve ou un travail à l'étranger.": "Unlike refugees, most expatriates make the deliberate choice to travel in order to pursue a dream or a job abroad.",
+                "Les déplacements des populations ont toujours existé mais la révolution industrielle a déclenché des migrations en masse.": "People have always moved from one country to another but industrial revolution brought about mass migration.",
+                "Un grand nombre de migrants quittent leur pays et partent à la recherche de travail dans le but d'assurer un meilleur avenir et une meilleure qualité de vie pour leurs enfants.": "Many migrants leave their countries and seek work in order to ensure a better future and a better quality of life for their children.",
+                "Le regroupement familial a été instauré de manière à permettre aux familles de ressortissants étrangers, titulaires d'un titre de séjour en règle, de les rejoindre dans le pays d'adoption.": "Family reunification was introduced in order to enable families of foreign nationals who hold a valid residence permit to join them in their country of adoption.",
+                "Entre 1945 et 1975 , la France a fait venir un grand nombre de travailleurs non-qualifiés du Maghreb francophone et d'autres anciennes colonies françaises de façon à combler le manque de main-d'œuvre.": "Between 1945 and 1975 , France brought in a large number of unskilled workers from French-speaking Maghreb and other former French colonies to remedy the labour shortage."
+              },
+              "Avantages d'une société diverse": {
+                "La société multiculturelle/pluriethnique/plurielle": "Multicultural/multi-ethnic society",
+                "La double appartenance culturelle": "Belonging to two cultures",
+                "Le métissage de la société": "Mixing of cultures/melting pot",
+                "Un enrichissement personnel, social et culturel": "Personal, social and cultural enrichment",
+                "La population jeune et active": "Young and active population",
+                "Une société plus dynamique": "More dynamic society",
+                "Une augmentation de mariages et de couples mixtes": "Increase in mixed marriages and mixed couples",
+                "Un nombre d'élus d'origine étrangère en hausse": "Increasing number of elected officials from foreign backgrounds",
+                "Permettre aux esprits de s'ouvrir et d'être curieux": "To allow minds to open up and be curious",
+                "Découvrir d'autres manières de penser et de vive": "To discover other ways of thinking and living", // Typo in original JSON fixed: "vive" to "vivre"
+                "Éradiquer les peurs de ce qu'on ne connait pas.": "To eradicate fears of the unknown",
+                "Mettre fin aux clichés et aux stéréotypes": "To put an end to clichés and stereotypes",
+                "Tirer le meilleur parti du brassage des cultures": "To make the most of the mixing of cultures",
+                "Faire appel à l'immigration pour résoudre les problèmes de vieillissement de la population": "To use immigration to solve the problems of an ageing population",
+                "Respecter les mœurs, les coutumes, la langue et les valeurs de chaque groupe ethnique": "To respect the way of life, customs, language and values of each ethnic group",
+                "Les immigrés contribuent à l'économie en travaillant, en consommant et en payant des impôts.": "Immigrants contribute to the economy by working, consuming and paying taxes.",
+                "Les immigrés font souvent des tâches que les habitants du pays d'accueil refusent de faire.": "Immigrants often do tasks that inhabitants of the host country refuse to do.",
+                "Une cohabitation réussie et un décloisonnement social peuvent éviter l'extrémisme et l'intégrisme.": "Successful cohabitation and breaking down social barriers can avoid extremism and fundamentalism.",
+                "Une société de diversité culturelle encourage la tolérance, le respect de l'autre et l'égalité entre tous.": "A culturally diverse society promotes tolerance, respect for others and equality among all.",
+                "La France est connue comme « terre d'accueil » depuis la Révolution de 1789 , quand l'asile est devenu un droit pour toute personne persécutée.": "France has been known as a \"land of refuge\" since the French Revolution of 1789 , when asylum became a right for any victim of persecution.",
+                "Je suis d'avis que s'intégrer à la société du pays dans lequel on vit ne doit pas impliquer oublier ses origines étrangères.": "I believe that integrating into the society of the country in which you live should not mean forgetting your foreign origins.",
+                "Je soutiens qu'une société dans laquelle les minorités peuvent conserver leur identité culturelle est plus harmonieuse et plus équilibrée.": "I maintain that a society in which minorities can retain their cultural identity is more harmonious and balanced.",
+                "Je suis absolument persuadé(e) que les avantages d'une société multiculturelle dépassent de beaucoup les inconvénients comme on peut le constater dans le modèle canadien.": "I am absolutely convinced that the advantages of a multicultural society far outweigh the disadvantages, as shown by the Canadian model.",
+                "Je ne peux m'empêcher de penser que ne pas reconnaitre que notre société s'est enrichie par l'immigration est de la mauvaise foi.": "I can't help but think that not acknowledging that our society has become richer through immigration is being disingenuous."
+              },
+              "Problème du point de vue des migrants": {
+                "Le trafic clandestin": "Illegal trafficking",
+                "Les camps de détention": "Detention camps",
+                "Le choc culturel": "Culture shock",
+                "Le racisme/la haine raciale/la xénophobie": "Racism/racial hatred/xenophobia",
+                "Le harcèlement policier": "Police harassment",
+                "Le rejet/l'exclusion (f)/la marginalisation": "Rejection/exclusion/marginalisation",
+                "L'inégalité (f) des chances des minorités ethniques": "Unequal opportunities for ethnic minorities",
+                "La ségrégation au quotidien": "Segregation in everyday life",
+                "Un chemin parsemé d'embûches": "Path full of pitfalls",
+                "Payer des passeurs des sommes exorbitantes": "To pay smugglers extortionate sums of money",
+                "Traverser la mer dans des embarcations de fortune": "To cross the sea in makeshift boats",
+                "Avoir tout à réapprendre": "To have to relearn everything",
+                "Intégrer les codes du nouveau pays": "To learn the codes of the new country",
+                "Avoir à faire face aux préjugés": "To have to deal with prejudices",
+                "Devenir des boucs émissaires": "To become scapegoats",
+                "Devoir vivre dans des quartiers difficiles": "To have to live in problem neighbourhoods",
+                "Vivre une véritable galère (fam)": "To live through absolute hell",
+                "Travailler au noir (fam)": "To work without being declared/to moonlight",
+                "Les immigrés, même de deuxième ou troisième génération, sont souvent confrontés à des discriminations raciales.": "Immigrants, even second or third generation immigrants, often face racial discrimination",
+                "Certaines cités des banlieues sont de véritables ghettos où de nombreux jeunes issus de l'immigration se sentent exclus.": "Some suburban estates can be real ghettos where many young people from an immigrant backgrounds feel excluded."
+              },
+              "Problèmes du point de vue des autochtones": {
+                "La crise migratoire": "Migratory crisis",
+                "L'immigration (f) illégale/clandestine": "Illegal immigration",
+                "Les immigrés en situation irrégulière": "Illegal immigrants",
+                "L'existence d'un climat d'insécurité/de méfiance": "Existence of a climate of insecurity/mistrust",
+                "La société éclatée en communautés": "Society split into communities",
+                "Représenter une menace à la paix sociale, aux valeurs et au mode de vie des habitants « de souche»": "To pose a threat to social peace, values, and way of life of the \"native\" population",
+                "Devoir protéger son identité nationale": "To have to protect one's national identity",
+                "Selon certains, si le pays a besoin d'une main d'œuvre flexible et bon marché, elle doit rester saisonnière et temporaire.": "According to some, if the country needs a flexible and cheap labour force, it must remain seasonal and temporary.",
+                "Certains sont convaincus que les immigrés prennent le travail et les allocations des gens du pays.": "Some are convinced that immigrants take the work and social benefits of the local people"
+              },
+              "Solutions possibles": {
+                "Un discours national sécuritaire": "A national security-related discourse",
+                "La reconduite à la frontière": "Escort(ing) back to the border",
+                "L'expulsion (f)/la déportation/le rapatriement": "Expulsion/deportation/repatriation",
+                "La ségrégation": "Segregation",
+                "La déchéance de nationalité": "Losing your nationality",
+                "L'immigration « choisie»": "Selective immigration",
+                "Imposer des quotas": "To impose quotas",
+                "Durcir la lutte contre l'immigration clandestine": "To get tougher on illegal immigration",
+                "Endiguer le flux migratoire": "To stem the flow of migration",
+                "Exiger l'assimilation des immigrés plutôt qu'encourager leur intégration ou insertion": "To demand from immigrants that they assimilate rather than encouraging their integration",
+                "Ce que préconisent certains partis politiques d'extrême droite, c'est la fermeture des frontières pour tous, sauf aux personnes hautement qualifiées.": "What some far-right political parties are advocating is closing the borders to all, from highly qualified people",
+                "Une politique d'accueil et d'ouverture aux migrants": "A policy of welcoming and integrating migrants",
+                "La liberté de circulation": "Freedom of movement",
+                "La régularisation des sans-papiers": "Regularisation of illegal immigrants",
+                "La discrimination positive à l'embauche": "Positive discrimination when recruiting",
+                "L'obtention (f) du droit de vote": "Gaining the right to vote",
+                "L'acquisition (f) de la citoyenneté": "Acquiring citizenship",
+                "La politique du « vivre-ensemble»": "Policy for \"social cohesion\"",
+                "Offrir des cours d'alphabétisation": "To offer literacy classes",
+                "Éviter la ghettoïsation/la ségrégation/le repli identitaire": "To avoid creating ghettos/segregation/a retreat into nationalist ideas of identity",
+                "Promouvoir la diversité et la compréhension interculturelle par des initiatives multiculturelles": "To promote diversity and intercultural understanding through multicultural initiatives.",
+                "Dénoncer l'esprit (m) de clocher (id)/l'intolérance": "To denounce parochialism /intolerance",
+                "L'immigration est une question au cœur des débats politiques depuis les années 80 , avec un dilemme permanent entre humanité et nationalité.": "Immigration has been a central issue in political debates since the 1980s, with a consistent dilemma between humanity and nationality.",
+                "Le solde migratoire de la France est stable depuis plus de 30 ans.": "France's net migration has been stable for more than 30 years.",
+                "La cohabitation entre des communautés d'origines et de cultures diverses est un défi et un enjeu démocratiques.": "Cohabitation between communities of different origins and cultures is a challenge and a concern for democracy.",
+                "La libre circulation des personnes peut réussir pourvu que l'on conserve l'équilibre du pays d'accueil.": "The free movement of people can work provided it doesn't upset the balance of the host country.",
+                "On pourra endiguer le racisme a condition que les lois punissent suffisamment toute incitation à la haine raciale.": "Racism can be contained as long as laws sufficiently punish any incitement to racial hatred.",
+                "La migration ne diminuera pas a moins que l'on répartisse mieux les richesses et que l'on investisse dans l'amélioration des conditions de vie dans les pays pauvres.": "Migration will not decrease unless wealth is better distributed and investments are made to improve living conditions in poor countries."
+              }
+            }
+          }
+        };
+        // END OF PASTED JSON DATA
+
+        let allVocabularyItems = [];
+        let uniqueTopics = new Set();
+
+        let currentFlashcardIndex = 0;
+        let flashcardDeck = [];
+
+        let currentQuizQuestionIndex = 0;
+        let quizScore = 0;
+        let quizQuestions = [];
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function processVocabularyData(data, parentKey = "", currentPath = []) {
+            for (const key in data) {
+                const newPath = [...currentPath, key];
+                if (typeof data[key] === 'string') {
+                    const topicString = newPath.slice(0, -1).join(' - '); // Use all but last part of path for topic
+                    allVocabularyItems.push({
+                        french: key,
+                        english: data[key],
+                        topic: topicString || "General"
+                    });
+                    if (topicString) uniqueTopics.add(topicString);
+                } else if (typeof data[key] === 'object') {
+                    processVocabularyData(data[key], key, newPath);
+                }
+            }
+        }
+
+        function populateTopicFilters() {
+            const sortedTopics = Array.from(uniqueTopics).sort();
+            const flashcardFilter = document.getElementById('topic-filter-flashcards');
+            const quizFilter = document.getElementById('topic-filter-quiz');
+
+            const defaultOptionAll = "<option value='all'>All Topics</option>";
+            flashcardFilter.innerHTML = defaultOptionAll;
+            quizFilter.innerHTML = defaultOptionAll;
+
+            sortedTopics.forEach(topic => {
+                const option = `<option value="${topic}">${topic}</option>`;
+                flashcardFilter.innerHTML += option;
+                quizFilter.innerHTML += option;
+            });
+
+            flashcardFilter.addEventListener('change', (e) => filterFlashcards(e.target.value));
+            quizFilter.addEventListener('change', (e) => filterQuiz(e.target.value));
+        }
+
+        function filterFlashcards(selectedTopic) {
+            if (selectedTopic === 'all') {
+                flashcardDeck = [...allVocabularyItems];
+            } else {
+                flashcardDeck = allVocabularyItems.filter(item => item.topic === selectedTopic);
+            }
+            shuffleArray(flashcardDeck);
+            currentFlashcardIndex = 0;
+            if (flashcardDeck.length > 0) {
+                 displayFlashcard();
+            } else {
+                document.getElementById('flashcard-front').textContent = "No cards for this topic.";
+                document.getElementById('flashcard-back').textContent = "";
+            }
+            updateFlashcardCounter();
+        }
+
+        function setupFlashcards() {
+            filterFlashcards('all');
+        }
+
+        function displayFlashcard() {
+            const flashcardElement = document.getElementById('flashcard');
+            const front = document.getElementById('flashcard-front');
+            const back = document.getElementById('flashcard-back');
+
+            if (flashcardDeck.length > 0 && currentFlashcardIndex < flashcardDeck.length && currentFlashcardIndex >= 0) {
+                const term = flashcardDeck[currentFlashcardIndex];
+                front.textContent = term.french;
+                back.textContent = term.english;
+                flashcardElement.classList.remove('is-flipped');
+            } else if (flashcardDeck.length === 0 && allVocabularyItems.length > 0) {
+                front.textContent = "Select a topic or 'All Topics'";
+                back.textContent = "";
+            } else {
+                front.textContent = "No cards in this deck!";
+                back.textContent = "";
+            }
+            updateFlashcardCounter();
+        }
+
+        function updateFlashcardCounter() {
+            const totalInDeck = flashcardDeck.length;
+            const currentNum = (totalInDeck > 0 && currentFlashcardIndex >=0 && currentFlashcardIndex < totalInDeck) ? currentFlashcardIndex + 1 : 0;
+            document.getElementById('flashcard-counter').textContent = `${currentNum} / ${totalInDeck}`;
+        }
+
+        document.getElementById('flashcard')?.addEventListener('click', function() {
+            if (flashcardDeck.length > 0) {
+                this.classList.toggle('is-flipped');
+            }
+        });
+
+        document.getElementById('prev-flashcard')?.addEventListener('click', () => {
+            if (currentFlashcardIndex > 0) {
+                currentFlashcardIndex--;
+                displayFlashcard();
+            }
+        });
+
+        document.getElementById('next-flashcard')?.addEventListener('click', () => {
+            if (currentFlashcardIndex < flashcardDeck.length - 1) {
+                currentFlashcardIndex++;
+                displayFlashcard();
+            }
+        });
+
+        document.getElementById('shuffle-flashcards')?.addEventListener('click', () => {
+            shuffleArray(flashcardDeck);
+            currentFlashcardIndex = 0;
+            displayFlashcard();
+        });
+
+        function filterQuiz(selectedTopic) {
+            let tempQuizQuestions;
+            if (selectedTopic === 'all') {
+                tempQuizQuestions = allVocabularyItems.map(itemToQuizQuestion);
+            } else {
+                tempQuizQuestions = allVocabularyItems.filter(item => item.topic === selectedTopic).map(itemToQuizQuestion);
+            }
+            quizQuestions = tempQuizQuestions.filter(q => q.options.length > 1); // Ensure questions have options
+            shuffleArray(quizQuestions);
+            currentQuizQuestionIndex = 0;
+            quizScore = 0;
+            document.getElementById('quiz-score').innerHTML = '';
+            if (quizQuestions.length > 0) {
+                loadQuizQuestion();
+            } else {
+                document.getElementById('quiz-container').innerHTML = "<p class='text-center'>No questions for this topic. Select another or 'All Topics'.</p>";
+                document.getElementById('quiz-score').innerHTML = '';
+            }
+        }
+        
+        function itemToQuizQuestion(item) {
+            let options = [];
+            const correctAnswer = item.english;
+            options.push(correctAnswer);
+
+            let distractors = [];
+            const tempVocab = [...allVocabularyItems]; // Create a copy to shuffle for distractors
+            shuffleArray(tempVocab);
+
+            for (const vocabItem of tempVocab) {
+                if (distractors.length >= 3) break;
+                if (vocabItem.english !== correctAnswer && !distractors.includes(vocabItem.english)) {
+                    distractors.push(vocabItem.english);
+                }
+            }
+            // If not enough unique distractors, fill with placeholders (less ideal)
+            while (distractors.length < 3) {
+                distractors.push(`Placeholder ${distractors.length + Math.random()}`);
+            }
+
+            options = options.concat(distractors);
+            shuffleArray(options);
+
+            return {
+                question: `What does '${item.french}' mean?`,
+                answer: correctAnswer,
+                options: options.slice(0, 4)
+            };
+        }
+
+        function setupQuiz() {
+            filterQuiz('all');
+        }
+
+        function loadQuizQuestion() {
+            const quizContainer = document.getElementById('quiz-container');
+            if (!quizContainer) return;
+
+            if (currentQuizQuestionIndex < quizQuestions.length && quizQuestions.length > 0) {
+                const q = quizQuestions[currentQuizQuestionIndex];
+                
+                let finalOptions = [...q.options];
+                 // Ensure the correct answer is present, if not, replace a random option
+                if (!finalOptions.includes(q.answer) && finalOptions.length > 0) {
+                    finalOptions[Math.floor(Math.random() * finalOptions.length)] = q.answer;
+                } else if (!finalOptions.includes(q.answer)) { // if options array was empty
+                    finalOptions.push(q.answer);
+                }
+
+                // Ensure 4 options, fill if necessary
+                while(finalOptions.length < 4 && allVocabularyItems.length > 0) {
+                    let potentialDistractor = allVocabularyItems[Math.floor(Math.random() * allVocabularyItems.length)].english;
+                    if (!finalOptions.includes(potentialDistractor)) {
+                        finalOptions.push(potentialDistractor);
+                    } else if (finalOptions.length < 4) { // prevent infinite loop if vocab is small
+                        finalOptions.push(`Option ${finalOptions.length + Date.now()}`); // unique placeholder
+                    }
+                }
+                finalOptions = Array.from(new Set(finalOptions)).slice(0,4); // Unique and slice
+                 // Final check to ensure answer is there after unique/slice
+                if (!finalOptions.includes(q.answer) && finalOptions.length === 4) {
+                     finalOptions[Math.floor(Math.random() * finalOptions.length)] = q.answer;
+                } else if (!finalOptions.includes(q.answer)) {
+                    finalOptions.push(q.answer);
+                    finalOptions = finalOptions.slice(0,4);
+                }
+                shuffleArray(finalOptions);
+
+                quizContainer.innerHTML = `
+                    <h3 class="text-lg font-semibold mb-2">Question ${currentQuizQuestionIndex + 1} of ${quizQuestions.length}</h3>
+                    <p class="mb-4">${q.question}</p>
+                    ${finalOptions.map((optionText) => `
+                        <div class="option p-2 border rounded mb-2 hover:bg-blue-100" onclick="checkQuizAnswer(this, '${String(optionText).replace(/'/g, "\\'")}')">${optionText}</div>
+                    `).join('')}
+                    <p id="quiz-feedback" class="mt-2 h-8"></p>
+                `;
+            } else if (quizQuestions.length > 0) {
+                showFinalQuizScore();
+            } else {
+                 quizContainer.innerHTML = "<p class='text-center'>No questions available for the selected topic.</p>";
+            }
+        }
+
+
+        function checkQuizAnswer(element, selected) {
+            const options = document.querySelectorAll('#quiz-container .option');
+            options.forEach(opt => {
+                opt.onclick = null;
+                opt.classList.remove('hover:bg-blue-100');
+            });
+
+            const q = quizQuestions[currentQuizQuestionIndex];
+            const feedback = document.getElementById('quiz-feedback');
+
+            if (selected === q.answer) {
+                quizScore++;
+                feedback.innerHTML = `<span class="feedback-correct">Correct!</span>`;
+                element.classList.add('correct-selected');
+            } else {
+                feedback.innerHTML = `<span class="feedback-incorrect">Incorrect.</span> The correct answer is: ${q.answer}`;
+                element.classList.add('incorrect-selected');
+                options.forEach(opt => {
+                    if (opt.textContent === q.answer) {
+                        opt.classList.add('actual-correct');
+                    }
+                });
+            }
+            setTimeout(() => {
+                currentQuizQuestionIndex++;
+                loadQuizQuestion();
+            }, 2500);
+        }
+
+        function showFinalQuizScore() {
+            const quizContainer = document.getElementById('quiz-container');
+            if (!quizContainer) return;
+            quizContainer.innerHTML = `
+                <p class="text-xl text-center">Quiz completed!</p>
+                <button onclick="filterQuiz(document.getElementById('topic-filter-quiz').value)" class="mt-4 bg-green-500 text-white px-4 py-2 rounded mx-auto block">Restart Quiz (Current Topic)</button>
+            `;
+            document.getElementById('quiz-score').innerHTML = `Your quiz score: ${quizScore} out of ${currentQuizQuestionIndex}`;
+        }
+
+        // --- Initialize ---
+        function initializeApp() {
+            if (experiencesJsonData && experiencesJsonData.Expériences) {
+                processVocabularyData(experiencesJsonData.Expériences, "Expériences"); // Pass the main theme as initial parentKey
+            } else {
+                 console.error("Error: experiencesJsonData is not defined or 'Expériences' key is missing.");
+                document.getElementById('flashcard-display').innerHTML = "<p class='text-red-500 text-center'>Error: Vocabulary data structure issue. Check console.</p>";
+                document.getElementById('quiz-container').innerHTML = "<p class='text-red-500 text-center'>Error: Vocabulary data structure issue for quiz. Check console.</p>";
+                return;
+            }
+
+            if (allVocabularyItems && allVocabularyItems.length > 0) {
+                populateTopicFilters();
+                setupFlashcards();
+                setupQuiz();
+            } else {
+                document.getElementById('flashcard-display').innerHTML = "<p class='text-red-500 text-center'>No vocabulary items processed. Check JSON data.</p>";
+                document.getElementById('quiz-container').innerHTML = "<p class='text-red-500 text-center'>No vocabulary items for quiz. Check JSON data.</p>";
+            }
+        }
+
+        // Initial load when the script runs
+        initializeApp();
+
+    </script>
+</body>
+</html>
