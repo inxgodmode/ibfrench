@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>French Idioms Flashcards (Quizlet Style)</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f5f6f5;
+            color: #1f2a44;
+        }
+        .flashcard-container {
+            perspective: 1000px;
+            width: 500px;
+            height: 300px;
+            position: relative;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-front, .flashcard-back {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+        }
+        .flashcard-front {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1f2a44;
+        }
+        .flashcard-back {
+            transform: rotateY(180deg);
+            font-size: 20px;
+            color: #1f2a44;
+            line-height: 1.5;
+        }
+        .category {
+            position: absolute;
+            top: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #4267b2;
+            text-transform: uppercase;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            width: 500px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            background: #4267b2;
+            color: #ffffff;
+            transition: background 0.2s ease;
+        }
+        button:hover {
+            background: #365899;
+        }
+        .counter {
+            font-size: 16px;
+            color: #1f2a44;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+        .quiz-container {
+            display: none;
+            width: 500px;
+            text-align: center;
+        }
+        .quiz-question {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #1f2a44;
+        }
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .quiz-option {
+            padding: 12px;
+            font-size: 18px;
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .quiz-option:hover {
+            background: #f0f2f5;
+        }
+        .quiz-results {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #1f2a44;
+        }
+    </style>
+</head>
+<body>
+    <div class="flashcard-container" id="flashcard-container">
+        <div class="flashcard" id="flashcard">
+            <div class="flashcard-front">
+                <span class="category"></span>
+                <span class="content"></span>
+            </div>
+            <div class="flashcard-back">
+                <span class="category"></span>
+                <span class="content"></span>
+            </div>
+        </div>
+    </div>
+    <div class="counter" id="counter">1 / 83</div>
+    <div class="controls">
+        <button onclick="prevCard()">Previous</button>
+        <button onclick="startQuiz()">Start Quiz</button>
+        <button onclick="nextCard()">Next</button>
+    </div>
+    <div class="quiz-container" id="quiz-container">
+        <div class="quiz-question" id="quiz-question"></div>
+        <div class="quiz-options" id="quiz-options"></div>
+        <div class="quiz-results" id="quiz-results"></div>
+        <button onclick="resetApp()" style="margin-top: 20px;">Back to Flashcards</button>
+    </div>
+
+    <script>
+        const flashcards = [
+            { front: "Ça marche", back: "Meaning: It works<br>Literal: It walks<br>Used to say something functions or to agree to plans ('Okay, it works').", category: "Phrase" },
+            { front: "Coûter les yeux de la tête", back: "Meaning: To be very expensive<br>Literal: To cost the eyes of the head<br>Like 'it costs an arm and a leg'.", category: "Idiom" },
+            { front: "Être au courant", back: "Meaning: To be up-to-date or aware of something<br>Literal: To be in a current", category: "Idiom" },
+            { front: "Avoir un coup de foudre", back: "Meaning: To fall in love at first sight<br>Literal: To have a strike of lightning", category: "Idiom" },
+            { front: "Poser un lapin", back: "Meaning: To stand up someone<br>Literal: To put a rabbit<br>Not showing up for a planned meeting.", category: "Idiom" },
+            { front: "Avoir le cafard", back: "Meaning: To be in a bad mood, feel down, be depressed<br>Literal: To have the cockroach", category: "Idiom" },
+            { front: "Avoir la pêche / Avoir la banane / Avoir la patate", back: "Meaning: To be in a really good mood, super excited<br>Literal: To have the peach / banana / potato", category: "Idiom" },
+            { front: "Ne pas être dans son assiette", back: "Meaning: Not feeling really well today<br>Literal: Not to be in one's plate", category: "Idiom" },
+            { front: "Un froid de canard", back: "Meaning: It's actually really cold<br>Literal: A cold of duck", category: "Idiom" },
+            { front: "Pleuvoir des cordes", back: "Meaning: It's raining a lot or heavily<br>Literal: It's raining ropes", category: "Idiom" },
+            { front: "Il fait un temps de chien", back: "Meaning: The weather is really bad, really ugly<br>Literal: It's a dog's weather", category: "Idiom" },
+            { front: "Manger sur le pouce", back: "Meaning: To eat something really quickly<br>Literal: To eat on the thumb", category: "Idiom" },
+            { front: "Boire un coup / Boire des coups", back: "Meaning: To go have a drink with friends<br>Literal: To drink a shock / shots", category: "Idiom" },
+            { front: "Jeter l'argent par la fenêtre", back: "Meaning: To waste money<br>Literal: To throw money through the window", category: "Idiom" },
+            { front: "Rouler sur l'or", back: "Meaning: You're rich<br>Literal: To roll on gold", category: "Idiom" },
+            { front: "Se serrer la ceinture", back: "Meaning: To be careful with money, be on a budget<br>Literal: To tighten your belt", category: "Idiom" },
+            { front: "Prendre du recul", back: "Meaning: To look at a situation differently, analyze it<br>Literal: To take a step back", category: "Idiom" },
+            { front: "Toucher du bois", back: "Meaning: To ward off bad luck<br>Literal: To touch wood", category: "Idiom" },
+            { front: "Avoir un poil dans la main", back: "Meaning: To be very lazy<br>Literal: To have a hair in the hand", category: "Idiom" },
+            { front: "Avoir les dents longues", back: "Meaning: To be very ambitious<br>Literal: To have long teeth", category: "Idiom" },
+            { front: "Avoir les dents qui rayent le plancher", back: "Meaning: To have extreme ambition<br>Literal: To have teeth that scratch the floor", category: "Idiom" },
+            { front: "Prendre un râteau", back: "Meaning: To be rejected when trying to seduce<br>Literal: To take a rake", category: "Idiom" },
+            { front: "Mettre la main à la pâte", back: "Meaning: To help someone do something<br>Literal: To put the hand in the dough", category: "Idiom" },
+            { front: "Ça va sans dire", back: "Meaning: It's obvious<br>Literal: It goes without saying", category: "Phrase" },
+            { front: "Faites comme chez vous / Fais comme chez toi", back: "Meaning: Make yourself comfortable<br>Literal: Make yourself at home", category: "Phrase" },
+            { front: "L'air de rien", back: "Meaning: Without seeming to do so<br>Literal: The air of nothing", category: "Idiom" },
+            { front: "Tourner la page", back: "Meaning: To move on, move forward<br>Literal: To turn the page", category: "Idiom" },
+            { front: "C'est vu et revu", back: "Meaning: Something is not very original<br>Literal: It's seen and seen again", category: "Idiom" },
+            { front: "Arpenter", back: "Meaning: To walk a lot while waiting<br>Literal: To pace", category: "Verb" },
+            { front: "Une fois every moon", back: "Meaning: Very rarely<br>Literal: Once every moon", category: "Idiom" },
+            { front: "Ce n'est pas demain la veille", back: "Meaning: Something won't happen soon<br>Literal: It's not tomorrow the day before", category: "Idiom" },
+            { front: "Être à cran", back: "Meaning: Being super motivated<br>Literal: To be on edge", category: "Idiom" },
+            { front: "Il n'y a pas photo / Y'a pas photo", back: "Meaning: There is no debate, it's clear<br>Literal: There is no photo", category: "Idiom" },
+            { front: "Au hasard", back: "Meaning: Randomly or approximately<br>Literal: At random", category: "Phrase" },
+            { front: "C'est l'hôpital qui se fout de la charité", back: "Meaning: Hypocrisy in criticizing others<br>Literal: It's the hospital that laughs at charity", category: "Idiom" },
+            { front: "C'est le serpent qui se mord la queue", back: "Meaning: To be in a vicious circle<br>Literal: It's the snake that bites its tail", category: "Idiom" },
+            { front: "Noyer le poisson", back: "Meaning: To divert a conversation<br>Literal: To drown the fish", category: "Idiom" },
+            { front: "Avoir un petit coup de mou", back: "Meaning: Feeling a little depressed<br>Literal: To have a little soft blow", category: "Idiom" },
+            { front: "Avoir un coup dur", back: "Meaning: Going through a difficult time<br>Literal: To have a hard blow", category: "Idiom" },
+            { front: "Quoi de neuf ?", back: "Meaning: What's up? / What's new?<br>Literal: What's new?", category: "Phrase" },
+            { front: "Ça fait longtemps", back: "Meaning: Long time no see<br>Literal: It makes long time", category: "Phrase" },
+            { front: "Je ne peux pas venir / Je peux pas venir", back: "Meaning: I can't make it<br>Literal: I cannot come", category: "Phrase" },
+            { front: "Je suis en chemin / Je suis en route / J'arrive", back: "Meaning: I'm on my way<br>Literal: I am on way / on road / I arrive", category: "Phrase" },
+            { front: "Bonne chance", back: "Meaning: Good luck<br>Literal: Good luck", category: "Phrase" },
+            { front: "Bon rétablissement", back: "Meaning: Get well soon<br>Literal: Good re-establishment", category: "Phrase" },
+            { front: "C'est dingue / C'est fou", back: "Meaning: It's crazy<br>Literal: It's crazy", category: "Phrase" },
+            { front: "Je suis occupé(e)", back: "Meaning: I'm busy<br>Literal: I am busy", category: "Phrase" },
+            { front: "À plus / À plus tard", back: "Meaning: See you later<br>Literal: To plus / To later", category: "Phrase" },
+            { front: "Tomber dans les pommes", back: "Meaning: To faint<br>Literal: To fall in the apples", category: "Idiom" },
+            { front: "Faire la grasse matinée", back: "Meaning: To sleep in<br>Literal: To do the fat morning", category: "Idiom" },
+            { front: "Jeter de l'huile sur le feu", back: "Meaning: To make a situation worse<br>Literal: To throw oil on the fire", category: "Idiom" },
+            { front: "Passer une nuit blanche", back: "Meaning: To spend a sleepless night<br>Literal: To spend a white night", category: "Idiom" },
+            { front: "Mettre du beurre dans les épinards", back: "Meaning: To supplement one's income<br>Literal: To put butter in the spinach", category: "Idiom" },
+            { front: "L'habit ne fait pas le moine", back: "Meaning: Appearances can be deceiving<br>Literal: The habit doesn't make the monk", category: "Idiom" },
+            { front: "Rire jaune", back: "Meaning: To give a forced or awkward laugh<br>Literal: To laugh yellow", category: "Idiom" },
+            { front: "Avoir une faim de loup", back: "Meaning: To be very hungry<br>Literal: To have a hunger of wolf", category: "Idiom" },
+            { front: "Tenir la chandelle", back: "Meaning: To be a third wheel<br>Literal: To hold the candle", category: "Idiom" },
+            { front: "Un rat de bibliothèque", back: "Meaning: A bookworm<br>Literal: A library rat", category: "Idiom" },
+            { front: "Avoir un cœur d'artichaut", back: "Meaning: To fall in love easily<br>Literal: To have an artichoke heart", category: "Idiom" },
+            { front: "Chercher le poil dans l'œuf", back: "Meaning: To nitpick, be overly critical<br>Literal: To look for the hair in the egg", category: "Idiom" },
+            { front: "Être sur des épines", back: "Meaning: To be on edge, anxious<br>Literal: To be on thorns", category: "Idiom" },
+            { front: "Mettre son grain de sel", back: "Meaning: To give unsolicited opinion<br>Literal: To put one's grain of salt", category: "Idiom" },
+            { front: "Chercher le mouton à cinq pattes", back: "Meaning: To look for something impossible<br>Literal: To look for the sheep with five legs", category: "Idiom" },
+            { front: "Donner sa langue au chat", back: "Meaning: To give up, not know the answer<br>Literal: To give one's tongue to the cat", category: "Idiom" },
+            { front: "Vendre la peau de l'ours avant de l'avoir tué", back: "Meaning: To count chickens before they hatch<br>Literal: To sell the skin of the bear before killing it", category: "Idiom" },
+            { front: "N'importe quoi", back: "Meaning: Nonsense<br>Literal: Anything", category: "Phrase" },
+            { front: "Tiens-moi au courant", back: "Meaning: Keep me updated<br>Literal: Hold me in the current", category: "Phrase" },
+            { front: "À tout à l'heure", back: "Meaning: See you in a little while<br>Literal: To all the hour", category: "Phrase" },
+            { front: "Allons-y", back: "Meaning: Let's go<br>Literal: Let's go there", category: "Phrase" },
+            { front: "Qu'est-ce qu'il y a ?", back: "Meaning: What's the matter?<br>Literal: What is there?", category: "Phrase" },
+            { front: "Ça m'est égal", back: "Meaning: It's all the same to me<br>Literal: That is equal to me", category: "Phrase" },
+            { front: "Ne t'en fais pas", back: "Meaning: Don't worry<br>Literal: Do not make yourself of it", category: "Phrase" },
+            { front: "Ce n'est pas grave / C'est pas grave", back: "Meaning: It's no big deal<br>Literal: It is not serious", category: "Phrase" },
+            { front: "À tes souhaits / À vos souhaits", back: "Meaning: Bless you<br>Literal: To your wishes", category: "Phrase" },
+            { front: "Tiens", back: "Meaning: Here / Here you go<br>Literal: Hold", category: "Phrase" },
+            { front: "Pas grand-chose", back: "Meaning: Not much<br>Literal: Not much thing", category: "Phrase" },
+            { front: "Bon appétit", back: "Meaning: Enjoy your meal<br>Literal: Good appetite", category: "Phrase" },
+            { front: "Comme d'habitude", back: "Meaning: As usual<br>Literal: As of habit", category: "Phrase" },
+            { front: "Je n'en peux plus / J'en peux plus", back: "Meaning: I can't take it anymore<br>Literal: I cannot of it more", category: "Phrase" },
+            { front: "J'en ai marre", back: "Meaning: I'm fed up<br>Literal: I have had enough of it", category: "Phrase" },
+            { front: "Je n'y peux rien / J'y peux rien", back: "Meaning: There is nothing I can do<br>Literal: I cannot do anything about it", category: "Phrase" },
+            { front: "Je n'en reviens pas", back: "Meaning: I can't believe it<br>Literal: I don't come back from it", category: "Phrase" },
+            { front: "Je n'y suis pour rien", back: "Meaning: I have nothing to do with it<br>Literal: I am not there for anything", category: "Phrase" },
+            { front: "Oh là là", back: "Meaning: Expresses surprise, disappointment, disbelief<br>Literal: Oh there there", category: "Phrase" },
+            { front: "On ne sait jamais", back: "Meaning: You never know<br>Literal: One knows never", category: "Phrase" },
+            { front: "Pas du tout", back: "Meaning: Not at all<br>Literal: Not at all", category: "Phrase" },
+            { front: "Pas terrible", back: "Meaning: Not that great<br>Literal: Not terrible", category: "Phrase" },
+            { front: "Ça n'a rien à voir avec", back: "Meaning: It has nothing to do with<br>Literal: That has nothing to see with", category: "Phrase" },
+            { front: "Si ce n'est pas trop indiscret", back: "Meaning: If it's not too personal<br>Literal: If this is not too indiscreet", category: "Phrase" },
+            { front: "Tout à coup", back: "Meaning: Suddenly<br>Literal: All at blow", category: "Phrase" },
+            { front: "Tout à fait", back: "Meaning: Exactly, absolutely<br>Literal: All at done", category: "Phrase" },
+            { front: "Tu m'étonnes", back: "Meaning: Tell me something I don't know<br>Literal: You surprise me", category: "Phrase" },
+            { front: "Tu t'en rends compte ?", back: "Meaning: Can you imagine? / Do you realize?<br>Literal: You yourself render account of it?", category: "Phrase" },
+            { front: "Ça vaut le coup", back: "Meaning: It's worth it<br>Literal: That is worth the blow", category: "Phrase" },
+            { front: "Salut / Coucou / Hello", back: "Meaning: Hi / Hello<br>Literal: Hi / Hi / Hello", category: "Phrase" },
+            { front: "Bonjour", back: "Meaning: Good morning<br>Literal: Good day", category: "Phrase" },
+            { front: "Enchanté(e)", back: "Meaning: Nice to meet you<br>Literal: Enchanted", category: "Phrase" },
+            { front: "Comment ça va ? / Comment tu vas ? / Ça va ?", back: "Meaning: How are you?<br>Literal: How that goes? / How you go? / That goes?", category: "Phrase" },
+            { front: "Ça va", back: "Meaning: I'm fine or Ok<br>Literal: That goes", category: "Phrase" },
+            { front: "Quelle heure est-il ?", back: "Meaning: What time is it?<br>Literal: What hour is it?", category: "Phrase" },
+            { front: "Où sont les toilettes ?", back: "Meaning: Where is the bathroom?<br>Literal: Where are the toilets?", category: "Phrase" },
+            { front: "Excusez-moi", back: "Meaning: Excuse me<br>Literal: Excuse me", category: "Phrase" },
+            { front: "Combien ça coûte ?", back: "Meaning: How much does it cost?<br>Literal: How much that costs?", category: "Phrase" },
+            { front: "Je cherche...", back: "Meaning: I'm looking for...<br>Literal: I look for...", category: "Phrase" },
+            { front: "Merci", back: "Meaning: Thank you<br>Literal: Thank you", category: "Phrase" },
+            { front: "Au revoir", back: "Meaning: Goodbye<br>Literal: To the seeing again", category: "Phrase" },
+            { front: "Ciao / Bye", back: "Meaning: Bye<br>Literal: Ciao / Bye", category: "Phrase" },
+            { front: "À bientôt", back: "Meaning: See you soon<br>Literal: To soon", category: "Phrase" }
+        ];
+
+        let currentCard = 0;
+        let quizMode = false;
+        let quizQuestions = [];
+        let currentQuestion = 0;
+        let score = 0;
+
+        const flashcardContainer = document.getElementById('flashcard-container');
+        const flashcard = document.getElementById('flashcard');
+        const frontCategory = document.querySelector('.flashcard-front .category');
+        const backCategory = document.querySelector('.flashcard-back .category');
+        const frontContent = document.querySelector('.flashcard-front .content');
+        const backContent = document.querySelector('.flashcard-back .content');
+        const counter = document.getElementById('counter');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizQuestion = document.getElementById('quiz-question');
+        const quizOptions = document.getElementById('quiz-options');
+        const quizResults = document.getElementById('quiz-results');
+
+        function updateCard() {
+            if (!quizMode) {
+                frontCategory.textContent = flashcards[currentCard].category;
+                backCategory.textContent = flashcards[currentCard].category;
+                frontContent.innerHTML = flashcards[currentCard].front;
+                backContent.innerHTML = flashcards[currentCard].back;
+                counter.textContent = `${currentCard + 1} / ${flashcards.length}`;
+                flashcard.classList.remove('flipped');
+            }
+        }
+
+        function flipCard() {
+            if (!quizMode) {
+                flashcard.classList.toggle('flipped');
+            }
+        }
+
+        function nextCard() {
+            if (!quizMode) {
+                currentCard = (currentCard + 1) % flashcards.length;
+                updateCard();
+            }
+        }
+
+        function prevCard() {
+            if (!quizMode) {
+                currentCard = (currentCard - 1 + flashcards.length) % flashcards.length;
+                updateCard();
+            }
+        }
+
+        function getRandomQuestions(count) {
+            const shuffled = flashcards.sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        function getRandomOptions(correctCard, count) {
+            const options = [correctCard];
+            const otherCards = flashcards.filter(card => card !== correctCard);
+            for (let i = 0; i < count - 1; i++) {
+                const randomIndex = Math.floor(Math.random() * otherCards.length);
+                options.push(otherCards[randomIndex]);
+                otherCards.splice(randomIndex, 1);
+            }
+            return options.sort(() => 0.5 - Math.random());
+        }
+
+        function startQuiz() {
+            quizMode = true;
+            quizQuestions = getRandomQuestions(5);
+            currentQuestion = 0;
+            score = 0;
+            flashcardContainer.style.display = 'none';
+            counter.style.display = 'none';
+            quizContainer.style.display = 'block';
+            loadQuizQuestion();
+        }
+
+        function loadQuizQuestion() {
+            if (currentQuestion < quizQuestions.length) {
+                const question = quizQuestions[currentQuestion];
+                quizQuestion.textContent = question.front;
+                quizOptions.innerHTML = '';
+                const options = getRandomOptions(question, 4);
+                options.forEach(option => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'quiz-option';
+                    optionElement.innerHTML = option.back.replace(/<br>Literal:.*?(<br>|$)/, '');
+                    optionElement.onclick = () => checkAnswer(option, question);
+                    quizOptions.appendChild(optionElement);
+                });
+                quizResults.textContent = '';
+            } else {
+                quizResults.textContent = `Quiz finished! Your score: ${score} / ${quizQuestions.length}`;
+                quizOptions.innerHTML = '';
+                quizQuestion.textContent = '';
+            }
+        }
+
+        function checkAnswer(selected, correct) {
+            if (selected === correct) {
+                score++;
+                quizResults.textContent = 'Correct!';
+            } else {
+                quizResults.textContent = `Incorrect. The correct answer was: ${correct.back.replace(/<br>Literal:.*?(<br>|$)/, '')}`;
+            }
+            currentQuestion++;
+            setTimeout(loadQuizQuestion, 1000);
+        }
+
+        function resetApp() {
+            quizMode = false;
+            flashcardContainer.style.display = 'block';
+            counter.style.display = 'block';
+            quizContainer.style.display = 'none';
+            updateCard();
+        }
+
+        flashcardContainer.addEventListener('click', flipCard);
+        updateCard();
+    </script>
+</body>
+</html>
